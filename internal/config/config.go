@@ -48,7 +48,7 @@ Hashi auto-loads config from these standard locations:
   • .hashi/config.toml (traditional dotfile)
 
 For configuration documentation and examples, see:
-  https://github.com/[your-repo]/hashi#configuration`
+  https://github.com/Les-El/hashi#configuration`
 }
 
 func (e *ConfigCommandError) ExitCode() int {
@@ -947,7 +947,7 @@ ENVIRONMENT VARIABLES
     export HASHI_BLACKLIST_FILES="temp*,draft*,backup*"
     export HASHI_WHITELIST_FILES="important_config_report.txt"
 
-For more information, visit: https://github.com/example/hashi
+For more information, visit: https://github.com/Les-El/hashi
 `
 }
 

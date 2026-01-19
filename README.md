@@ -21,17 +21,55 @@ A command-line hash comparison tool that follows industry-standard CLI design gu
 
 ## Installation
 
+### Prerequisites
+- Go 1.21 or later (only if building from source)
+
+### Using Go (Recommended)
+If you have Go installed, you can install `hashi` directly to your `$GOPATH/bin`:
+
 ```bash
-go install github.com/example/hashi/cmd/hashi@latest
+go install github.com/Les-El/hashi/cmd/hashi@latest
 ```
 
-Or build from source:
+### Building from Source
+To build `hashi` manually for your specific platform:
 
-```bash
-git clone https://github.com/example/hashi.git
-cd hashi
-go build -o hashi ./cmd/hashi
-```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Les-El/hashi.git
+    cd hashi
+    ```
+
+2.  **Build the binary:**
+
+    **Linux / macOS:**
+    ```bash
+    go build -o hashi ./cmd/hashi
+    # Optional: Install to your local path
+    sudo mv hashi /usr/local/bin/
+    ```
+
+    **Windows (PowerShell):**
+    ```powershell
+    go build -o hashi.exe ./cmd/hashi
+    ```
+
+3.  **Verify the installation:**
+    ```bash
+    hashi --version
+    ```
+
+### Uninstallation
+To remove `hashi` from your system:
+
+- **If installed via `go install`:**
+  ```bash
+  rm $(go env GOPATH)/bin/hashi
+  ```
+- **If manually moved to `/usr/local/bin`:**
+  ```bash
+  sudo rm /usr/local/bin/hashi
+  ```
 
 ## Quick Start
 
