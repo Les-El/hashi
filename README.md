@@ -59,6 +59,27 @@ To build `hashi` manually for your specific platform:
     hashi --version
     ```
 
+### Building for Other Systems (Cross-Compilation)
+One of Go's best features is that you can build a version of `hashi` for any computer (Windows, Mac, or Linux) directly from your current machine. You don't need to install anything extra!
+
+To do this, you set two "target" variables before the build command:
+- `GOOS`: The Operating System (`windows`, `darwin` for Mac, `linux`)
+- `GOARCH`: The Processor Architecture (`amd64` for Intel/AMD, `arm64` for Apple Silicon/M-series or Raspberry Pi)
+
+**Examples (Run these from your Linux terminal):**
+
+```bash
+# Build for Windows (64-bit)
+GOOS=windows GOARCH=amd64 go build -o hashi.exe ./cmd/hashi
+
+# Build for Mac (Apple Silicon / M1, M2, M3)
+GOOS=darwin GOARCH=arm64 go build -o hashi-mac ./cmd/hashi
+
+# Build for Mac (Older Intel processors)
+GOOS=darwin GOARCH=amd64 go build -o hashi-mac-intel ./cmd/hashi
+```
+*The resulting file is a "static binary"—you can just send that one file to a friend on that system, and it will run without them needing to install Go.*
+
 ### Uninstallation
 To remove `hashi` from your system:
 
