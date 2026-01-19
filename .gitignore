@@ -1,0 +1,11 @@
+# Binaries
+hashi
+hashi.exe
+dist/
+
+# Logs
+*.log
+logs/
+
+# Env
+.env

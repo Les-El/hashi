@@ -952,7 +952,7 @@ For more information, visit: https://github.com/Les-El/hashi
 }
 
 func VersionText() string {
-	return "hashi version 0.1.0"
+	return "hashi version 1.0.1"
 }
 
 func (c *Config) HasStdinMarker() bool {

@@ -2,12 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.0.1] - 2026-01-18
+
+### Added
+- **Archive Verification**: Deep ZIP file integrity checking using CRC32 (via `--verify` flag)
+- **Flag Conflict Resolution**: Implemented "Pipeline of Intent" for predictable flag interactions
+- **Boolean Mode**: New `--bool` flag for simple `true`/`false` output
+- **Raw Mode**: New `--raw` flag to bypass special file handling
 
 ### Fixed
 - **CRITICAL**: Fixed configuration precedence violation where explicit default flags were incorrectly overridden by environment variables
-  - Example: `export HASHI_ALGORITHM=md5; hashi --algorithm=sha256 file.txt` now correctly uses SHA256 instead of MD5
-  - Affects all flags: --algorithm, --format, --verbose, --quiet, --recursive, --hidden, --preserve-order
   - Explicit flags now always override environment variables, even when flag value equals built-in default
   - Maintains correct precedence hierarchy: flags > env vars > config files > defaults
 
