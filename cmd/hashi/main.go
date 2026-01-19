@@ -126,9 +126,15 @@ func runArchiveVerificationMode(cfg *config.Config, colorHandler *color.Handler,
 
 	results, allPassed := verifier.VerifyMultiple(cfg.Files)
 	
-	if !cfg.Quiet {
+	if cfg.Bool {
+		if allPassed {
+			fmt.Fprintln(streams.Out, "true")
+		} else {
+			fmt.Fprintln(streams.Out, "false")
+		}
+	} else if !cfg.Quiet {
 		for _, result := range results {
-			fmt.Fprint(streams.Out, verifier.FormatResult(result, true))
+			fmt.Fprint(streams.Out, verifier.FormatResult(result, cfg.Verbose))
 		}
 	}
 

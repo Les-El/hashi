@@ -699,74 +699,74 @@ The implementation follows a test-driven approach with both unit tests and prope
     - Document migration paths
     - _Requirements: 11.1, 11.4_
 
-- [ ] 33. Implement archive integrity verification (ZIP CRC32)
-  - [ ] 33.1 Create ArchiveVerifier component
+- [x] 33. Implement archive integrity verification (ZIP CRC32)
+  - [x] 33.1 Create ArchiveVerifier component
     - Implement ZIP file detection
     - Implement CRC32 verification for ZIP entries
     - Always use CRC32 regardless of metadata (security hardening)
     - Report which specific entries failed
     - _Requirements: 15.1, 15.4, 15.6, 20.3_
   
-  - [ ] 33.2 Implement default boolean output for ZIP verification
+  - [x] 33.2 Implement default boolean output for ZIP verification
     - Return exit code only (no stdout) by default
     - Support --verbose for detailed output
     - Support --json for machine-readable details
     - _Requirements: 15.1, 16.1, 16.4_
   
-  - [ ] 33.3 Implement --raw flag for bypassing special handling
+  - [x] 33.3 Implement --raw flag for bypassing special handling
     - Treat ZIP files as raw bytes when --raw specified
     - Apply to other special file types as they're added
     - _Requirements: 15.5, 17.2_
   
-  - [ ] 33.4 Write property test for ZIP CRC32 verification
+  - [x] 33.4 Write property test for ZIP CRC32 verification
     - **Property 22: ZIP verification uses CRC32 only**
     - **Validates: Requirements 15.4, 20.3**
   
-  - [ ] 33.5 Write property test for boolean output default
+  - [x] 33.5 Write property test for boolean output default
     - **Property 23: ZIP verification returns boolean by default**
     - **Validates: Requirements 15.1, 16.1**
   
-  - [ ] 33.6 Write property test for raw flag
+  - [x] 33.6 Write property test for raw flag
     - **Property 24: Raw flag bypasses special file handling**
     - **Validates: Requirements 15.5, 17.2**
   
-  - [ ] 33.7 Write property test for multiple ZIP verification
+  - [x] 33.7 Write property test for multiple ZIP verification
     - **Property 26: Multiple ZIP verification returns single boolean**
     - **Validates: Requirements 15.2**
   
-  - [ ] 33.8 Write unit tests for archive verification
+  - [x] 33.8 Write unit tests for archive verification
     - Test valid ZIP verification
     - Test corrupted ZIP detection
     - Test --raw flag behavior
     - Test verbose and JSON output modes
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
-- [ ] 34. Implement flag conflict detection
-  - [ ] 34.1 Create ConflictResolver component
+- [x] 34. Implement flag conflict detection
+  - [x] 34.1 Create ConflictResolver component
     - Define conflict rules for mutually exclusive flags
     - Implement conflict detection logic
     - Generate clear error messages for conflicts
     - Include --bool conflicts with --quiet and --format
     - _Requirements: 17.1, 17.4, 26.3, 26.4_
   
-  - [ ] 34.2 Document all known conflicts
+  - [x] 34.2 Document all known conflicts
     - Output format conflicts (--json vs --plain vs --bool)
     - Verbosity conflicts (--quiet vs --verbose)
     - Match requirement conflicts
     - File handling conflicts (--raw vs default)
     - _Requirements: 17.4, 17.5_
   
-  - [ ] 34.3 Write property test for conflict detection
+  - [x] 34.3 Write property test for conflict detection
     - **Property 25: Mutually exclusive flags are rejected**
     - **Validates: Requirements 17.1**
   
-  - [ ] 34.4 Write unit tests for conflict resolver
+  - [x] 34.4 Write unit tests for conflict resolver
     - Test each known conflict pair
     - Test valid flag combinations
     - Test error message quality
     - _Requirements: 17.1, 17.4_
 
-- [ ] 35. Checkpoint - Ensure all tests pass
+- [x] 35. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 36. Educational code quality (ongoing)

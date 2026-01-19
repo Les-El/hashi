@@ -758,7 +758,7 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 		"verify":  cfg.Verify,
 	}
 
-	state, resolveWarnings, err := conflict.ResolveState(args, flagSet, cfg.OutputFormat)
+	state, resolveWarnings, err := conflict.ResolveState(args, flagSet, cfg.OutputFormat, len(cfg.Files) > 0, len(cfg.Hashes) > 0)
 	if err != nil {
 		return nil, nil, err
 	}
