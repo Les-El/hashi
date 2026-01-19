@@ -8,89 +8,30 @@ A command-line hash comparison tool that follows industry-standard CLI design gu
 
 2. **User-First Design**: Every feature answers the question: "What functionality does the user need, and what behavior does the user expect?"
 
-3. **No Lock-Out**: Users must never be locked out of functionality due to design choices. Default behaviors always have escape hatches.
+3. **No Lock-Out**: Users must never be locked out of functionality due to design choices. Default behaviors always have escape hatches (e.g., `--raw` bypasses ZIP auto-verification).
 
 ## Features
 
 - **Human-first design**: Clear, colorized output with progress indicators
 - **Multiple output formats**: Default (grouped), verbose, JSON, and plain (for scripting)
 - **Flexible input**: Files, directories, stdin, and hash strings
-- **Archive verification**: Deep ZIP file integrity checking via CRC32 (explicit via `--verify`)
+- **Archive verification**: ZIP file integrity checking via CRC32
 - **Robust error handling**: User-friendly messages with actionable suggestions
 - **Script-friendly**: Meaningful exit codes and quiet mode for automation
 
 ## Installation
 
-### Prerequisites
-- Go 1.21 or later (only if building from source)
-
-### Using Go (Recommended)
-If you have Go installed, you can install `hashi` directly to your `$GOPATH/bin`:
-
 ```bash
-go install github.com/Les-El/hashi/cmd/hashi@latest
+go install github.com/example/hashi/cmd/hashi@latest
 ```
 
-### Building from Source
-To build `hashi` manually for your specific platform:
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Les-El/hashi.git
-    cd hashi
-    ```
-
-2.  **Build the binary:**
-
-    **Linux / macOS:**
-    ```bash
-    go build -o hashi ./cmd/hashi
-    # Optional: Install to your local path
-    sudo mv hashi /usr/local/bin/
-    ```
-
-    **Windows (PowerShell):**
-    ```powershell
-    go build -o hashi.exe ./cmd/hashi
-    ```
-
-3.  **Verify the installation:**
-    ```bash
-    hashi --version
-    ```
-
-### Building for Other Systems (Cross-Compilation)
-One of Go's best features is that you can build a version of `hashi` for any computer (Windows, Mac, or Linux) directly from your current machine. You don't need to install anything extra!
-
-To do this, you set two "target" variables before the build command:
-- `GOOS`: The Operating System (`windows`, `darwin` for Mac, `linux`)
-- `GOARCH`: The Processor Architecture (`amd64` for Intel/AMD, `arm64` for Apple Silicon/M-series or Raspberry Pi)
-
-**Examples (Run these from your Linux terminal):**
+Or build from source:
 
 ```bash
-# Build for Windows (64-bit)
-GOOS=windows GOARCH=amd64 go build -o hashi.exe ./cmd/hashi
-
-# Build for Mac (Apple Silicon / M1, M2, M3)
-GOOS=darwin GOARCH=arm64 go build -o hashi-mac ./cmd/hashi
-
-# Build for Mac (Older Intel processors)
-GOOS=darwin GOARCH=amd64 go build -o hashi-mac-intel ./cmd/hashi
+git clone https://github.com/example/hashi.git
+cd hashi
+go build -o hashi ./cmd/hashi
 ```
-*The resulting file is a "static binary"—you can just send that one file to a friend on that system, and it will run without them needing to install Go.*
-
-### Uninstallation
-To remove `hashi` from your system:
-
-- **If installed via `go install`:**
-  ```bash
-  rm $(go env GOPATH)/bin/hashi
-  ```
-- **If manually moved to `/usr/local/bin`:**
-  ```bash
-  sudo rm /usr/local/bin/hashi
-  ```
 
 ## Quick Start
 
@@ -116,11 +57,11 @@ hashi -r /path/to/dir
 # Output as JSON
 hashi --json *.txt
 
-# Verify ZIP file internal integrity (CRC32)
-hashi --verify archive.zip
-
-# Hash ZIP file itself (standard behavior)
+# Verify ZIP file integrity (CRC32)
 hashi archive.zip
+
+# Hash ZIP file as raw bytes (instead of verifying)
+hashi --raw archive.zip
 ```
 
 ## Configuration

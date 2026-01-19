@@ -1,11 +1,8 @@
-# Binaries
-hashi
-hashi.exe
+3_step_project_review_and_history.md
+.kiro
+.vscode
+docs/archive
+GEMINI.md
+hashi.code-workspace
+./hashi
 dist/
-
-# Logs
-*.log
-logs/
-
-# Env
-.env

@@ -76,43 +76,13 @@ hashi a1b2c3d4...
 
 ---
 
-## 2. Archive Verification
+## 2. File Selection & Traversal
 
-### 2.1 Verify ZIP Integrity (`--verify`)
-**Scenario:** You have a ZIP file and want to ensure none of its internal files are corrupted using their embedded CRC32 checksums.
-**Command:**
-```bash
-hashi --verify archive.zip
-```
-**Output:**
-```text
-Verifying: archive.zip
-  ✓ All 42 entries passed CRC32 verification
-```
-**Explanation:** The `--verify` flag triggers deep inspection of supported archive formats like ZIP.
-
-### 2.2 Hash ZIP File (Default)
-**Scenario:** You want to compute the hash of the ZIP file itself (the standard behavior).
-**Command:**
-```bash
-hashi archive.zip
-```
-**Output:**
-```text
-[SHA-256] archive.zip
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-```
-**Explanation:** Without the `--verify` flag, `hashi` treats ZIP files like any other regular file.
-
----
-
-## 3. File Selection & Traversal
-
-### 3.1 Recursive Hashing (`-r`)
+### 2.1 Recursive Hashing (`-a`)
 **Scenario:** You want to hash every file in your project, including those in subfolders `src/` and `images/`.
 **Command:**
 ```bash
-hashi -r
+hashi -a
 ```
 **Output:**
 ```text
@@ -123,13 +93,13 @@ b1946ac9...  src/utils/helper.go
 55502f40...  images/logo.png
 ...
 ```
-**Explanation:** The `-r` (recursive) flag tells `hashi` to traverse the directory tree downwards.
+**Explanation:** The `-a` (all subdirectories) flag tells `hashi` to traverse the directory tree downwards.
 
-### 3.2 Include Hidden Files (`--hidden`)
+### 2.2 Include Hidden Files (`-H`)
 **Scenario:** You need to check configuration files like `.bashrc` or `.git/config`.
 **Command:**
 ```bash
-hashi --hidden
+hashi -H
 ```
 **Output:**
 ```text
@@ -139,17 +109,33 @@ hashi --hidden
 982d9212...  .env
 ...
 ```
-**Explanation:** The `--hidden` flag forces `hashi` to include files and directories starting with a dot (`.`), which are usually ignored.
+**Explanation:** The `-H` flag forces `hashi` to include files and directories starting with a dot (`.`), which are usually ignored.
+
+### 2.3 Recursive + Hidden (`-a -H`)
+**Scenario:** You want a complete manifest of everything in the folder, hidden or not, deep or shallow.
+**Command:**
+```bash
+hashi -a -H
+```
+**Output:**
+```text
+[SHA-256] Computed hashes for 42 files (recursive, hidden):
+...
+12345678...  .git/HEAD
+87654321...  src/.temp_cache
+...
+```
+**Explanation:** Combining flags works intuitively. `hashi` crawls the entire tree including hidden items.
 
 ---
 
-## 4. Filtering
+## 3. Filtering
 
-### 4.1 Include by Pattern (`--include`)
+### 3.1 Include by Pattern (`--include`)
 **Scenario:** You only care about your source code files.
 **Command:**
 ```bash
-hashi -r --include "*.go,*.js"
+hashi -a --include "*.go,*.js"
 ```
 **Output:**
 ```text
@@ -159,11 +145,11 @@ Computed hashes for 12 files:
 ```
 **Explanation:** `hashi` scanned the tree but only processed files ending in `.go` or `.js`.
 
-### 4.2 Exclude by Pattern (`--exclude`)
+### 3.2 Exclude by Pattern (`--exclude`)
 **Scenario:** You want to hash everything except temporary log files.
 **Command:**
 ```bash
-hashi -r --exclude "*.log"
+hashi -a --exclude "*.log"
 ```
 **Output:**
 ```text
@@ -173,11 +159,11 @@ Computed hashes for 8 files:
 ```
 **Explanation:** Files matching `*.log` were skipped.
 
-### 4.3 Filter by Size (`--min-size`, `--max-size`)
+### 3.3 Filter by Size (`--min-size`, `--max-size`)
 **Scenario:** You want to find large ISOs (>1GB) but ignore small text files.
 **Command:**
 ```bash
-hashi -r --min-size 1GB
+hashi -a --min-size 1GB
 ```
 **Output:**
 ```text
@@ -188,11 +174,11 @@ a1b2c3d4...  downloads/movie.mkv
 ```
 **Explanation:** Only files meeting the size criteria were hashed.
 
-### 4.4 Filter by Date (`--modified-after`)
+### 3.4 Filter by Date (`--modified-after`)
 **Scenario:** You verified your backup last week. You only want to check files changed since then.
 **Command:**
 ```bash
-hashi -r --modified-after 2026-01-10
+hashi -a --modified-after 2026-01-10
 ```
 **Output:**
 ```text
@@ -204,10 +190,10 @@ Computed hashes for 4 files:
 
 ---
 
-## 5. Advanced Features
+## 4. Advanced Features
 
-### 5.1 Auto-Algorithm Detection
-**Scenario:** A website gives you a short 32-character hash (MD5), but you forget to specify `--algorithm md5`.
+### 4.1 Auto-Algorithm Detection
+**Scenario:** A website gives you a short 32-character hash (MD5), but you forget to specify `--algo md5`.
 **Command:**
 ```bash
 hashi myfile.exe 5d41402abc4b2a76b9719d911017c592
@@ -220,67 +206,123 @@ hashi myfile.exe 5d41402abc4b2a76b9719d911017c592
 ```
 **Explanation:** `hashi` noticed the string length was 32, inferred it was likely MD5, switched the algorithm for you, and verified the file.
 
-### 5.2 Explicit Algorithm Selection (`--algorithm`)
+### 4.2 Directory Comparison (`--compare`)
+**Scenario:** You copied a folder to a backup drive and want to ensure it's identical.
+**Command:**
+```bash
+hashi --compare ./photos /mnt/backup/photos
+```
+**Output:**
+```text
+Directory Comparison Results:
+-----------------------------
+✅ 150 files match perfectly.
+
+🔴 MISMATCHES (Content differs):
+   - DCIM/IMG_001.jpg
+
+🟡 UNIQUE to ./photos:
+   - new_pic.jpg
+
+🟡 UNIQUE to /mnt/backup/photos:
+   - old_deleted_pic.jpg
+```
+**Explanation:** `hashi` diffed the two directory trees, identifying content mismatches (corruption), and missing/extra files.
+
+### 4.3 Explicit Algorithm Selection (`--algo`)
 **Scenario:** You need a SHA-512 hash specifically.
 **Command:**
 ```bash
-hashi --algorithm sha512 secure_doc.pdf
+hashi --algo sha512 secure_doc.pdf
 ```
 **Output:**
 ```text
 [SHA-512] secure_doc.pdf
 cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce... (truncated)
 ```
-**Explanation:** The `--algorithm` flag overrides the default SHA-256.
+**Explanation:** The `--algo` flag overrides the default SHA-256.
 
 ---
 
-## 6. Output & Logging
+## 5. Output & Logging
 
-### 6.1 JSON Output (`--format json`)
+### 5.1 JSON Output (`--output-format json`)
 **Scenario:** You are writing a Python script to process these hashes and need structured data.
 **Command:**
 ```bash
-hashi -r --format json
+hashi -a --output-format json
 ```
 **Output:**
 ```json
-{
-  "processed": 15,
-  "duration_ms": 124,
-  "match_groups": [],
-  "unmatched": [
-    {"file": "notes.txt", "hash": "e3b0c442..."},
-    ...
-  ],
-  "errors": []
-}
+[
+  {
+    "file": "notes.txt",
+    "hash": "e3b0c442...",
+    "algorithm": "sha256",
+    "size": 1024
+  },
+  ...
+]
 ```
 **Explanation:** The output is pure JSON, ready to be piped into `jq` or read by other programs.
 
-### 6.2 Logging to File (`--log-file`)
-**Scenario:** You want to record internal events or warnings to a separate file.
+### 5.2 Logging to File (`--log-file`)
+**Scenario:** You are running a long verification overnight and want a record of any errors.
 **Command:**
 ```bash
-hashi -r --log-file activity.log
+hashi -a --compare /data /backup --log-file verify.log
 ```
-**Explanation:** Detailed event logs are written to disk, keeping the main output clean.
+**Output:**
+```text
+(Screen shows progress bar...)
+```
+**File Content (verify.log):**
+```text
+2026-01-16 10:00:01 [INFO] Starting comparison of /data and /backup
+2026-01-16 10:05:23 [ERROR] Read error on /data/corrupt_sector.bin: input/output error
+...
+```
+**Explanation:** The screen remains clean (or shows progress), while detailed event logs are written to disk.
+
+### 5.3 Save Output Report (`--output-file`)
+**Scenario:** You want to save the "PASS/FAIL" summary report to a text file for your records.
+**Command:**
+```bash
+hashi file.zip <hash> --output-file report.txt
+```
+**Output:**
+```text
+(No output to screen)
+```
+**File Content (report.txt):**
+```text
+[SHA-256] Verifying file.zip...
+✅ PASS: Hash matches provided string.
+```
+**Explanation:** The human-readable report is redirected to the file.
 
 ---
 
-## 7. Configuration Files
+## 6. Configuration Files
 
-### 7.1 Using a Config File (`--config`)
-**Scenario:** You have a complex set of defaults you use for a specific project.
+### 6.1 Using a Config File (`--config`)
+**Scenario:** You have a complex set of exclusions and folders you check every day.
 **Command:**
 ```bash
-hashi --config .hashi.toml
+hashi --config daily_check.json
 ```
-**Content of .hashi.toml:**
-```toml
-[defaults]
-algorithm = "sha512"
-recursive = true
-output_format = "plain"
+**Content of daily_check.json:**
+```json
+{
+  "recursive": true,
+  "algo": "md5",
+  "exclude": ["*.tmp", "*.cache"],
+  "paths": ["./project", "./docs"]
+}
 ```
-**Explanation:** `hashi` reads the settings from the TOML file, allowing you to maintain project-specific configurations.
+**Output:**
+```text
+[MD5] Loading configuration from daily_check.json...
+Computed hashes for 150 files...
+```
+**Explanation:** `hashi` reads the flags and arguments from the file, saving you from typing them every time.

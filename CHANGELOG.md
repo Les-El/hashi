@@ -1,11 +1,5 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-## [1.0.2] - 2026-01-18
-
-### Fixed
-- **Module Path**: Updated `go.mod` path and internal imports to `github.com/Les-El/hashi` to support `go install` from the remote repository.
 
 ## [1.0.1] - 2026-01-18
 
@@ -20,8 +14,8 @@ All notable changes to this project will be documented in this file.
   - Explicit flags now always override environment variables, even when flag value equals built-in default
   - Maintains correct precedence hierarchy: flags > env vars > config files > defaults
 
-## [1.0.0] - 2026-01-10
-- Initial release — first stable public version.
+## [1.0.0] - 2026-01-17
+- Internal release — hash_machine depreciated
 
 ### Notes
 

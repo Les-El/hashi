@@ -48,7 +48,7 @@ Hashi auto-loads config from these standard locations:
   • .hashi/config.toml (traditional dotfile)
 
 For configuration documentation and examples, see:
-  https://github.com/Les-El/hashi#configuration`
+  https://github.com/[your-repo]/hashi#configuration`
 }
 
 func (e *ConfigCommandError) ExitCode() int {
@@ -91,7 +91,6 @@ type Config struct {
 	Bool          bool
 	PreserveOrder bool
 	Raw           bool
-	Verify        bool
 
 	MatchRequired bool
 
@@ -633,7 +632,6 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 	fs.BoolVarP(&cfg.Bool, "bool", "b", false, "Boolean output mode")
 	fs.BoolVar(&cfg.PreserveOrder, "preserve-order", false, "Keep input order")
 	fs.BoolVar(&cfg.Raw, "raw", false, "Treat files as raw bytes")
-	fs.BoolVar(&cfg.Verify, "verify", false, "Verify archive integrity (e.g. ZIP CRC32)")
 	fs.BoolVar(&cfg.MatchRequired, "match-required", false, "Exit 0 only if matches found")
 	fs.StringVarP(&cfg.OutputFormat, "format", "f", "default", "Output format")
 	fs.StringVarP(&cfg.OutputFile, "output", "o", "", "Write output to file")
@@ -755,10 +753,9 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 		"verbose": cfg.Verbose,
 		"bool":    cfg.Bool,
 		"raw":     cfg.Raw,
-		"verify":  cfg.Verify,
 	}
 
-	state, resolveWarnings, err := conflict.ResolveState(args, flagSet, cfg.OutputFormat, len(cfg.Files) > 0, len(cfg.Hashes) > 0)
+	state, resolveWarnings, err := conflict.ResolveState(args, flagSet, cfg.OutputFormat)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -773,9 +770,6 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 	}
 	if state.Mode == conflict.ModeRaw {
 		cfg.Raw = true
-	}
-	if state.Mode == conflict.ModeVerify {
-		cfg.Verify = true
 	}
 
 	// 4. Final Validation (non-conflict checks)
@@ -799,8 +793,8 @@ EXAMPLES
   hashi -b file1.txt file2.txt   Boolean check: do files match? (outputs true/false)
   hashi -r /path/to/dir          Recursively hash directory
   hashi --json *.txt             Output results as JSON
-  hashi --verify file.zip        Verify ZIP file integrity (CRC32)
-  hashi file.zip                 Hash ZIP file itself (standard behavior)
+  hashi file.zip                 Verify ZIP file integrity (CRC32)
+  hashi --raw file.zip           Hash ZIP file as raw bytes
   hashi -                        Read file list from stdin
 
 USAGE
@@ -817,7 +811,6 @@ FLAGS
   -a, --algorithm string    Hash algorithm: sha256, md5, sha1, sha512, blake2b (default: sha256)
       --preserve-order      Keep input order instead of grouping by hash
       --raw                 Treat files as raw bytes (bypass special handling)
-      --verify              Verify archive integrity (e.g. ZIP CRC32)
 
 BOOLEAN MODE (-b / --bool)
   Boolean mode outputs just "true" or "false" for scripting use cases.
@@ -947,12 +940,12 @@ ENVIRONMENT VARIABLES
     export HASHI_BLACKLIST_FILES="temp*,draft*,backup*"
     export HASHI_WHITELIST_FILES="important_config_report.txt"
 
-For more information, visit: https://github.com/Les-El/hashi
+For more information, visit: https://github.com/example/hashi
 `
 }
 
 func VersionText() string {
-	return "hashi version 1.0.2"
+	return "hashi version 1.0.11"
 }
 
 func (c *Config) HasStdinMarker() bool {

@@ -2,7 +2,6 @@
 package main
 
 import (
-	"archive/zip"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/archive"
 	"github.com/Les-El/hashi/internal/config"
 	"github.com/Les-El/hashi/internal/console"
 	"github.com/Les-El/hashi/internal/hash"
@@ -176,97 +174,6 @@ func TestQuietMode(t *testing.T) {
 	if outBuf.Len() > 0 {
 		t.Errorf("Expected empty output with quiet mode, got %q", outBuf.String())
 	}
-}
-
-// TestArchiveVerificationMode verifies that the --verify flag correctly triggers ZIP integrity verification.
-func TestArchiveVerificationMode(t *testing.T) {
-	// Create a test ZIP file
-	tmpDir, _ := os.MkdirTemp("", "hashi-zip-*")
-	defer os.RemoveAll(tmpDir)
-	
-	zipPath := filepath.Join(tmpDir, "test.zip")
-	createTestZIP(zipPath, t)
-	
-	// Simulated configuration
-	cfg := config.DefaultConfig()
-	cfg.Files = []string{zipPath}
-	cfg.Verify = true
-	
-	// Simulated streams
-	var outBuf, errBuf bytes.Buffer
-	streams := &console.Streams{
-		Out: &outBuf,
-		Err: &errBuf,
-	}
-	
-	// Run the mode
-	verifier := archive.NewVerifier()
-	results, allPassed := verifier.VerifyMultiple(cfg.Files)
-	
-	if !allPassed {
-		t.Error("Expected verification to pass")
-	}
-	
-	if len(results) != 1 {
-		t.Errorf("Expected 1 result, got %d", len(results))
-	}
-	
-	// Verify formatting logic in main.go
-	if !cfg.Quiet {
-		for _, result := range results {
-			fmt.Fprint(streams.Out, verifier.FormatResult(result, cfg.Verbose))
-		}
-	}
-	
-	// Default mode (not verbose, not quiet) should be boolean (empty stdout)
-	if outBuf.String() != "" {
-		t.Errorf("Expected empty output in default verification mode, got %q", outBuf.String())
-	}
-	
-	// Test Verbose mode
-	outBuf.Reset()
-	cfg.Verbose = true
-	if !cfg.Quiet {
-		for _, result := range results {
-			fmt.Fprint(streams.Out, verifier.FormatResult(result, cfg.Verbose))
-		}
-	}
-	if !strings.Contains(outBuf.String(), "Verifying:") {
-		t.Error("Expected verbose output to contain 'Verifying:'")
-	}
-	
-	// Test Bool mode
-	outBuf.Reset()
-	cfg.Verbose = false
-	cfg.Bool = true
-	if cfg.Bool {
-		if allPassed {
-			fmt.Fprintln(streams.Out, "true")
-		} else {
-			fmt.Fprintln(streams.Out, "false")
-		}
-	}
-	if outBuf.String() != "true\n" {
-		t.Errorf("Expected 'true\\n' in bool mode, got %q", outBuf.String())
-	}
-}
-
-// Helper to create a test ZIP file
-func createTestZIP(path string, t *testing.T) {
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("Failed to create ZIP file: %v", err)
-	}
-	defer f.Close()
-	
-	zw := zip.NewWriter(f)
-	defer zw.Close()
-	
-	w, err := zw.Create("file.txt")
-	if err != nil {
-		t.Fatalf("Failed to create ZIP entry: %v", err)
-	}
-	w.Write([]byte("zip content"))
 }
 
 // TestProperty_DefaultBehavior verifies that hashi defaults to the current directory when no args are provided.

@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Les-El/hashi/internal/archive"
 	"github.com/Les-El/hashi/internal/color"
 	"github.com/Les-El/hashi/internal/config"
 	"github.com/Les-El/hashi/internal/conflict"
@@ -34,6 +33,8 @@ func main() {
 	// Set up signal handling for graceful Ctrl-C interruption
 	sigHandler := signals.NewSignalHandler(func() {
 		// Cleanup function - called on first Ctrl-C
+		// Note: The main cleanup (streams) is handled by defer in main,
+		// but this callback is for immediate signal response if needed.
 	})
 	sigHandler.Start()
 
@@ -46,6 +47,7 @@ func main() {
 	// Parse command-line arguments
 	cfg, warnings, err := config.ParseArgs(os.Args[1:])
 	if err != nil {
+		// Streams are not initialized yet, so we use standard stderr
 		fmt.Fprintln(os.Stderr, errHandler.FormatError(err))
 		os.Exit(config.ExitInvalidArgs)
 	}
@@ -63,28 +65,30 @@ func main() {
 		fmt.Fprint(streams.Err, conflict.FormatAllWarnings(warnings))
 	}
 
-	// Handle help flag
+	// Handle help flag (User requested info -> Stdout)
 	if cfg.ShowHelp {
 		fmt.Fprintln(streams.Out, config.HelpText())
 		os.Exit(config.ExitSuccess)
 	}
 
-	// Handle version flag
+	// Handle version flag (User requested info -> Stdout)
 	if cfg.ShowVersion {
 		fmt.Fprintln(streams.Out, config.VersionText())
 		os.Exit(config.ExitSuccess)
 	}
 
-	// Determine operation mode
+	// Determine operation mode based on arguments
 	
-	// Edge case handling for file + hash comparison mode
+	// Edge case handling for file + hash comparison mode (Requirements 25.4, 25.5, 25.6)
 	if len(cfg.Hashes) > 0 {
+		// Check for multiple files with hash strings
 		if len(cfg.Files) > 1 {
 			fmt.Fprintln(streams.Err, errHandler.FormatError(
 				fmt.Errorf("Cannot compare multiple files with hash strings. Use one file at a time.")))
 			os.Exit(config.ExitInvalidArgs)
 		}
 		
+		// Check for stdin marker with hash strings
 		if cfg.HasStdinMarker() {
 			fmt.Fprintln(streams.Err, errHandler.FormatError(
 				fmt.Errorf("Cannot use stdin input with hash comparison")))
@@ -93,55 +97,27 @@ func main() {
 	}
 	
 	if len(cfg.Files) == 0 && len(cfg.Hashes) > 0 {
-		os.Exit(runHashValidationMode(cfg, colorHandler, streams))
+		// Hash validation mode: no files, only hash strings
+		exitCode := runHashValidationMode(cfg, colorHandler, streams)
+		os.Exit(exitCode)
 	}
 
 	if len(cfg.Files) == 1 && len(cfg.Hashes) == 1 {
-		os.Exit(runFileHashComparisonMode(cfg, colorHandler, streams))
-	}
-
-	// Check for Verify Mode (explicit --verify flag)
-	// We need to re-check the resolved state from conflict resolution
-	// which is stored in cfg (implicitly via ParseArgs -> ResolveState)
-	// Actually, config.ParseArgs calls conflict.ResolveState and applies it to cfg.
-	// But I need to make sure cfg has the 'Verify' flag but also respects the resolved mode.
-	
-	// If the user explicitly asked for verification:
-	if cfg.Verify {
-		os.Exit(runArchiveVerificationMode(cfg, colorHandler, streams, errHandler))
+		// File + hash comparison mode: one file, one hash string
+		exitCode := runFileHashComparisonMode(cfg, colorHandler, streams)
+		os.Exit(exitCode)
 	}
 
 	// Standard file processing mode
 	if len(cfg.Files) > 0 {
-		os.Exit(runStandardHashingMode(cfg, colorHandler, streams, errHandler))
+		exitCode := runStandardHashingMode(cfg, colorHandler, streams, errHandler)
+		os.Exit(exitCode)
 	}
+
+	// Archive verification mode (Task 33)
+	// TODO: Implement archive verification mode
 
 	os.Exit(config.ExitSuccess)
-}
-
-// runArchiveVerificationMode verifies integrity of archive files (ZIP CRC32).
-func runArchiveVerificationMode(cfg *config.Config, colorHandler *color.Handler, streams *console.Streams, errHandler *errors.Handler) int {
-	verifier := archive.NewVerifier()
-	verifier.SetVerbose(cfg.Verbose)
-
-	results, allPassed := verifier.VerifyMultiple(cfg.Files)
-	
-	if cfg.Bool {
-		if allPassed {
-			fmt.Fprintln(streams.Out, "true")
-		} else {
-			fmt.Fprintln(streams.Out, "false")
-		}
-	} else if !cfg.Quiet {
-		for _, result := range results {
-			fmt.Fprint(streams.Out, verifier.FormatResult(result, cfg.Verbose))
-		}
-	}
-
-	if allPassed {
-		return config.ExitSuccess
-	}
-	return config.ExitIntegrityFail
 }
 
 // runStandardHashingMode processes multiple files, computing hashes and formatting output.

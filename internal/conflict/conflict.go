@@ -17,9 +17,9 @@ type Mode string
 
 const (
 	ModeStandard Mode = "standard"
-	ModeBool     Mode = "bool"   // --bool
-	ModeRaw      Mode = "raw"    // --raw
-	ModeVerify   Mode = "verify" // --verify
+	ModeBool     Mode = "bool" // --bool
+	ModeRaw      Mode = "raw"  // --raw
+	// ModeVerify Mode = "verify" // --verify (future)
 )
 
 // Format defines the data output format (stdout).
@@ -64,11 +64,9 @@ type Warning struct {
 // ResolveState processes raw arguments and detected flags to produce a consistent RunState.
 //
 // args: The raw command-line arguments (os.Args[1:]) to determine order.
-// flagSet: A map of boolean flags detected by the flag parser.
-// explicitFormat: The value of --format if set.
-// hasFiles: True if any file arguments were detected.
-// hasHashes: True if any hash string arguments were detected.
-func ResolveState(args []string, flagSet map[string]bool, explicitFormat string, hasFiles bool, hasHashes bool) (*RunState, []Warning, error) {
+// flags: A map of boolean flags detected by the flag parser (e.g. {"json": true, "quiet": true}).
+// explicitFormat: The value of --format if set (empty if default).
+func ResolveState(args []string, flagSet map[string]bool, explicitFormat string) (*RunState, []Warning, error) {
 	warnings := make([]Warning, 0)
 	
 	// Phase 1: Intent Collection
@@ -81,6 +79,13 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string,
 	// Check if explicit format was provided via --format flag
 	if explicitFormat != "" && explicitFormat != "default" {
 		lastFormatIntent = explicitFormat
+		// We assign a low priority position effectively, but specific flags like --json
+		// usually override general --format if they come later.
+		// However, to simplify, we can treat --format as an intent that happened "somewhere".
+		// But --json and --plain are distinct flags.
+		// If user does `--format=json --plain`, `plain` should win.
+		// If user does `--plain --format=json`, `json` should win.
+		// We need to find the positions.
 	}
 
 	// Scan args for relevant flags
@@ -125,8 +130,12 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string,
 	}
 
 	// 2b. Determine Verbosity (Quiet overrides Verbose)
+	// We check the flagSet (populated by pflag) because these boolean logic rules
+	// are "Existence" based, not "Order" based (per design doc).
 	isQuiet := flagSet["quiet"]
 	isVerbose := flagSet["verbose"]
+	
+	// Also check bool mode, which implies quiet
 	isBool := flagSet["bool"]
 
 	if isQuiet {
@@ -140,7 +149,7 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string,
 
 	// 2c. Determine Mode (Bool overrides everything)
 	isRaw := flagSet["raw"]
-	isVerify := flagSet["verify"]
+	// isVerify := flagSet["verify"] // Future
 	
 	if isBool {
 		state.Mode = ModeBool
@@ -149,22 +158,19 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string,
 		// Bool overrides Format
 		if state.Format != FormatDefault {
 			warnings = append(warnings, Warning{Message: fmt.Sprintf("--bool overrides --%s", state.Format)})
-			state.Format = FormatDefault
+			state.Format = FormatDefault // Reset to default (or we could define a FormatBool)
 		}
 	} else if isRaw {
 		state.Mode = ModeRaw
-		if isVerify {
-			return nil, warnings, fmt.Errorf("--raw and --verify are mutually exclusive")
-		}
-	} else if isVerify {
-		state.Mode = ModeVerify
-		if hasHashes {
-			return nil, warnings, fmt.Errorf("--verify cannot be used with hash strings")
-		}
 	}
 
 	// Phase 3: Validation (Hard Errors)
 	
+	// Raw vs Verify (Future check, but good to have structure)
+	// if isRaw && isVerify {
+	// 	 return nil, warnings, fmt.Errorf("--raw and --verify are mutually exclusive")
+	// }
+
 	return state, warnings, nil
 }
 

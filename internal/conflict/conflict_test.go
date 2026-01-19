@@ -3,30 +3,9 @@ package conflict_test
 
 import (
 	"testing"
-	"testing/quick"
 
 	"github.com/Les-El/hashi/internal/conflict"
 )
-
-// Feature: cli-guidelines-review, Property 25: Mutually exclusive flags are rejected
-// **Validates: Requirements 17.1**
-func TestProperty_MutuallyExclusiveFlagsAreRejected(t *testing.T) {
-	// Property: Certain flag combinations must always return an error
-	property := func(raw, verify bool) bool {
-		if raw && verify {
-			flagSet := map[string]bool{
-				"raw": true, "verify": true,
-			}
-			_, _, err := conflict.ResolveState(nil, flagSet, "", true, false)
-			return err != nil
-		}
-		return true
-	}
-
-	if err := quick.Check(property, nil); err != nil {
-		t.Errorf("Property failed: %v", err)
-	}
-}
 
 // TestConflictResolution_PipelineOfIntent tests the conflict resolution logic.
 // **Validates: Pipeline of Intent (Conflict Resolution)**
@@ -36,7 +15,6 @@ func TestConflictResolution_PipelineOfIntent(t *testing.T) {
 		args           []string
 		flagSet        map[string]bool
 		explicitFormat string
-		hasHashes      bool
 		expectedState  conflict.RunState
 		hasWarning     bool
 	}{
@@ -125,23 +103,11 @@ func TestConflictResolution_PipelineOfIntent(t *testing.T) {
 				Verbosity: conflict.VerbosityNormal,
 			},
 		},
-		{
-			name: "Verify Mode",
-			args: []string{"--verify"},
-			flagSet: map[string]bool{
-				"verify": true,
-			},
-			expectedState: conflict.RunState{
-				Mode:      conflict.ModeVerify,
-				Format:    conflict.FormatDefault,
-				Verbosity: conflict.VerbosityNormal,
-			},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			state, warnings, err := conflict.ResolveState(tt.args, tt.flagSet, tt.explicitFormat, true, tt.hasHashes)
+			state, warnings, err := conflict.ResolveState(tt.args, tt.flagSet, tt.explicitFormat)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -161,38 +127,6 @@ func TestConflictResolution_PipelineOfIntent(t *testing.T) {
 			}
 			if !tt.hasWarning && len(warnings) > 0 {
 				t.Errorf("Expected no warnings, got %v", warnings)
-			}
-		})
-	}
-}
-
-// TestConflictResolution_HardErrors tests mutually exclusive flag errors.
-func TestConflictResolution_HardErrors(t *testing.T) {
-	tests := []struct {
-		name      string
-		flagSet   map[string]bool
-		hasHashes bool
-	}{
-		{
-			name: "Raw vs Verify",
-			flagSet: map[string]bool{
-				"raw": true, "verify": true,
-			},
-		},
-		{
-			name: "Verify vs Hash Strings",
-			flagSet: map[string]bool{
-				"verify": true,
-			},
-			hasHashes: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := conflict.ResolveState(nil, tt.flagSet, "", true, tt.hasHashes)
-			if err == nil {
-				t.Error("Expected error for mutually exclusive flags, got nil")
 			}
 		})
 	}

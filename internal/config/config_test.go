@@ -416,38 +416,6 @@ func TestParseArgs_AbbreviationRejection(t *testing.T) {
 	}
 }
 
-// TestParseArgs_Verify tests the --verify flag.
-func TestParseArgs_Verify(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    []string
-		want    bool
-		wantErr bool
-	}{
-		{"long verify", []string{"--verify"}, true, false},
-		{"no verify", []string{"file.txt"}, false, false},
-		{"verify and raw (conflict)", []string{"--verify", "--raw"}, false, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg, _, err := ParseArgs(tt.args)
-			if tt.wantErr {
-				if err == nil {
-					t.Error("Expected error for verify+raw conflict, got nil")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("ParseArgs() error = %v", err)
-			}
-			if cfg.Verify != tt.want {
-				t.Errorf("Verify = %v, want %v", cfg.Verify, tt.want)
-			}
-		})
-	}
-}
-
 // contains checks if a string contains a substring.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
