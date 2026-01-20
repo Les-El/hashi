@@ -1,14 +1,12 @@
 # hashi
 
-A command-line hash comparison tool that follows industry-standard CLI design guidelines.
+hi! I'm hashi. 
 
-## Core Principles
+I'm an intuitive CLI tool for hashing. I hope I can help!
 
-1. **Developer Continuity**: This project is documented so any competent developer can pick it up and continue work. Code without context is technical debt.
+## AI Declaration
 
-2. **User-First Design**: Every feature answers the question: "What functionality does the user need, and what behavior does the user expect?"
-
-3. **No Lock-Out**: Users must never be locked out of functionality due to design choices. Default behaviors always have escape hatches (e.g., `--raw` bypasses ZIP auto-verification).
+hashi was 100% written by AI. It began development on the Kiro IDE, using Claude for planning and coding. Work later moved Visual Studio Code, where Gemini CLI finished most of the work. 
 
 ## Features
 
@@ -19,65 +17,109 @@ A command-line hash comparison tool that follows industry-standard CLI design gu
 - **Robust error handling**: User-friendly messages with actionable suggestions
 - **Script-friendly**: Meaningful exit codes and quiet mode for automation
 
-## Installation and Uninstallation
+## Installation 
 
-This section details how to install and uninstall `hashi` on different operating systems, including how to manage its presence in your system's PATH and remove any associated configuration or log files.
+### Universal Installation (Linux / Windows / MacOS)
 
-### Linux
-
-#### Installation Method 1: Using `go install` (Recommended if Go is installed)
-
-This method fetches, compiles, and installs `hashi` directly from the source repository. Ensure you have a Go development environment (Go 1.16+ recommended) set up.
-
+To use the command-line installation, please make sure you have [Go](https://go.dev/dl/) installed on your system. Then open the terminal and enter the following
 ```bash
 go install github.com/Les-El/hashi/cmd/hashi@latest
 ```
 
-#### Uninstallation Method 1 (for `go install`):
+### Installing by Building from Source
 
-To remove `hashi` installed via `go install`:
+To build `hashi` locally from the source code, first ensure that you have both [Git](https://git-scm.com/install/) and [Go](https://go.dev/dl/) installed on your system.
 
+
+#### On Linux and MacOS
+Open your terminal application and navigate to your preferred development directory, then enter:
 ```bash
-rm "$(go env GOPATH)"/bin/hashi
-```
-
-#### Installation Method 2: Building from Source
-
-For more control or if `go install` is not suitable, you can build `hashi` directly from its source code. Ensure you have Git and a Go development environment (Go 1.16+ recommended) set up.
-
-```bash
-git clone https://github.com/Les-El/hashi.git # Clone the repository into your preferred development directory
+git clone https://github.com/Les-El/hashi.git # Clone the repository
 cd hashi # Navigate to the cloned project root
-go build -o hashi ./cmd/hashi # Build the executable from the project root
-sudo mv hashi /usr/local/bin/ # Move the executable from the project root
+go build -o hashi ./cmd/hashi # Build the executable
+sudo mv hashi /usr/local/bin/ # Move the executable
 ```
 *Note: The `sudo mv` command places the `hashi` executable in a standard system-wide location.*
 
-#### Uninstallation Method 2 (for building from source):
-
-To remove `hashi` if you installed it by moving the compiled binary to `/usr/local/bin`:
-
-```bash
-sudo rm /usr/local/bin/hashi
+#### On Windows using PowerShell
+Open the PowerShell application, navigate to your preferred development directory, and enter:
+```powershell
+git clone https://github.com/Les-El/hashi.git # Clone the repository
+cd hashi # Navigate to the cloned project root
+go build -o hashi.exe ./cmd/hashi # Build the executable
+Move-Item hashi.exe "C:\Program Files\hashi\" # Move hashi.exe
 ```
 
-#### How to add to PATH (Linux):
+## Adding to Path
+If you want to be able to call the tool from any directory by just typing `hashi`, you may need to add it to your PATH
 
-If `hashi` is not recognized after installation, you may need to add its location to your system's PATH.
+### Adding to PATH in Linux and MacOS
 
-If installed via `go install`, the executable is usually placed in `$(go env GOPATH)/bin`. Add the following line to your shell profile (e.g., `~/.bashrc`, `~/.zshrc`):
+#### If you used the `go install` method
+
+The executable is usually placed in `$(go env GOPATH)/bin`. Add the following line to your shell profile (e.g., `~/.bashrc`, `~/.zshrc`):
 
 ```bash
 export PATH=$PATH:$(go env GOPATH)/bin
 ```
 Then, reload your profile: `source ~/.bashrc` (or the appropriate file for your shell).
 
+#### If you built `hashi` from source
+
 If you moved the `hashi` binary to `/usr/local/bin`, it should already be in your PATH. If not, ensure `/usr/local/bin` is included in your shell's PATH variable.
 
-#### Removing Configuration and Logs (Linux):
+### Adding to PATH in Windows
 
-`hashi` may create configuration files or logs. To remove them:
+If `hashi.exe` is not recognized after installation, you will need to add its location to your system's PATH environment variable.
 
+1.  Open the **Start Search**, type in "env", and choose **"Edit the system environment variables"**.
+2.  Click the **"Environment Variables..."** button.
+3.  Under **"User variables"** (for current user only) or **"System variables"** (for all users), find **"Path"**, select it, and click **"Edit..."**.
+4.  Click **"New"** and add the full path to the directory where `hashi.exe` is located (e.g., `C:\Users\YourUser\go\bin` if using `go install`, or `C:\Program Files\hashi` if you moved it manually).
+5.  Click **OK** on all windows and restart your terminal (Command Prompt, PowerShell, etc.) for changes to take effect.
+
+
+## Uninstallation
+_Please note that after uninstalling `hashi`, you may also want to remove Configuration and Log files; instructions below_
+
+### Uninstallation after using the `go install` method above
+Open the terminal and enter the following
+#### On Linux and MacOS
+```
+rm "$(go env GOPATH)"/bin/hashi
+```
+#### On Windows using PowerShell or Windows Terminal
+```
+Remove-Item "$(go env GOPATH)\bin\hashi.exe"
+```
+#### On Windows using Command Prompt (cmd)
+```
+del "%GOPATH%\bin\hashi.exe"
+```
+---
+
+### Uninstalling After Building from Source
+To remove `hashi` if you installed it by moving the compiled binary to `/usr/local/bin`, open the terminal application and enter
+
+#### On Linux and MacOS
+```bash
+sudo rm /usr/local/bin/hashi
+```
+#### On Windows PowerShell or Windows Terminal
+```powershell
+# Assuming hashi.exe was moved to C:\Program Files\hashi
+Remove-Item "C:\Program Files\hashi\hashi.exe"
+```
+#### On Windows Command Prompt
+```cmd
+del "C:\Program Files\hashi\hashi.exe"
+```
+
+## Removing Configuration and Log
+
+`hashi` may create configuration files or logs. To remove them after uninstalling the tool, open your terminal application and enter the following
+
+### On Linux and MacOS
 ```bash
 # Remove global configuration directory (XDG standard)
 rm -rf ~/.config/hashi
@@ -89,67 +131,7 @@ rm -rf ~/.hashi
 rm .hashi.toml # This removes the .hashi.toml file from your current working directory
 ```
 
-### Windows
-
-#### Installation Method 1: Using `go install` (Recommended if Go is installed)
-
-This method fetches, compiles, and installs `hashi.exe` directly from the source repository. Ensure you have a Go development environment (Go 1.16+ recommended) set up.
-
-```powershell
-go install github.com/Les-El/hashi/cmd/hashi@latest
-```
-*Note: On Windows, the executable will be named `hashi.exe`.*
-
-#### Uninstallation Method 1 (for `go install`):
-
-To remove `hashi.exe` installed via `go install`:
-
-```powershell
-Remove-Item "$(go env GOPATH)\bin\hashi.exe"
-```
-Or, if using Command Prompt:
-```cmd
-del "%GOPATH%\bin\hashi.exe"
-```
-
-#### Installation Method 2: Building from Source
-
-For more control or if `go install` is not suitable, you can build `hashi` directly from its source code. Ensure you have Git and a Go development environment (Go 1.16+ recommended) set up.
-
-```powershell
-git clone https://github.com/Les-El/hashi.git # Clone the repository into your preferred development directory
-cd hashi # Navigate to the cloned project root
-go build -o hashi.exe ./cmd/hashi # Build the executable from the project root
-# Then manually move hashi.exe to a desired location, e.g., C:\Program Files\hashi
-# Move-Item hashi.exe "C:\Program Files\hashi\"
-```
-
-#### Uninstallation Method 2 (for building from source):
-
-To remove `hashi.exe` if you installed it by manually moving the compiled binary:
-
-```powershell
-# Assuming hashi.exe was moved to C:\Program Files\hashi
-Remove-Item "C:\Program Files\hashi\hashi.exe"
-```
-Or, if using Command Prompt:
-```cmd
-del "C:\Program Files\hashi\hashi.exe"
-```
-
-#### How to add to PATH (Windows):
-
-If `hashi.exe` is not recognized after installation, you will need to add its location to your system's PATH environment variable.
-
-1.  Open the **Start Search**, type in "env", and choose **"Edit the system environment variables"**.
-2.  Click the **"Environment Variables..."** button.
-3.  Under **"User variables"** (for current user only) or **"System variables"** (for all users), find **"Path"**, select it, and click **"Edit..."**.
-4.  Click **"New"** and add the full path to the directory where `hashi.exe` is located (e.g., `C:\Users\YourUser\go\bin` if using `go install`, or `C:\Program Files\hashi` if you moved it manually).
-5.  Click **OK** on all windows and restart your terminal (Command Prompt, PowerShell, etc.) for changes to take effect.
-
-#### Removing Configuration and Logs (Windows):
-
-`hashi` may create configuration files or logs. These are typically found in your user's application data directory or the current working directory.
+### On Windows
 
 ```powershell
 # Remove user-specific configuration (example path)
@@ -160,71 +142,6 @@ Remove-Item -Path ".\.hashi.toml" -ErrorAction SilentlyContinue # This removes t
 ```
 *Note: Actual paths may vary. Check `~/.config/hashi` or `~/.hashi` if using a Linux-like environment on Windows (e.g., WSL, Git Bash).*
 
-### MacOS
-
-#### Installation Method 1: Using `go install` (Recommended if Go is installed)
-
-This method fetches, compiles, and installs `hashi` directly from the source repository. Ensure you have a Go development environment (Go 1.16+ recommended) set up.
-
-```bash
-go install github.com/Les-El/hashi/cmd/hashi@latest
-```
-
-#### Uninstallation Method 1 (for `go install`):
-
-To remove `hashi` installed via `go install`:
-
-```bash
-rm "$(go env GOPATH)"/bin/hashi
-```
-
-#### Installation Method 2: Building from Source
-
-For more control or if `go install` is not suitable, you can build `hashi` directly from its source code. Ensure you have Git and a Go development environment (Go 1.16+ recommended) set up.
-
-```bash
-git clone https://github.com/Les-El/hashi.git # Clone the repository into your preferred development directory
-cd hashi # Navigate to the cloned project root
-go build -o hashi ./cmd/hashi # Build the executable from the project root
-sudo mv hashi /usr/local/bin/ # Move the executable from the project root
-```
-*Note: The `sudo mv` command places the `hashi` executable in a standard system-wide location.*
-
-#### Uninstallation Method 2 (for building from source):
-
-To remove `hashi` if you installed it by moving the compiled binary to `/usr/local/bin`:
-
-```bash
-sudo rm /usr/local/bin/hashi
-```
-
-#### How to add to PATH (MacOS):
-
-If `hashi` is not recognized after installation, you may need to add its location to your system's PATH.
-
-If installed via `go install`, the executable is usually placed in `$(go env GOPATH)/bin`. Add the following line to your shell profile (e.g., `~/.bash_profile`, `~/.zshrc`):
-
-```bash
-export PATH=$PATH:$(go env GOPATH)/bin
-```
-Then, reload your profile: `source ~/.bash_profile` (or the appropriate file for your shell).
-
-If you moved the `hashi` binary to `/usr/local/bin`, it should already be in your PATH. If not, ensure `/usr/local/bin` is included in your shell's PATH variable.
-
-#### Removing Configuration and Logs (MacOS):
-
-`hashi` may create configuration files or logs. To remove them:
-
-```bash
-# Remove global configuration directory (XDG standard)
-rm -rf ~/.config/hashi
-
-# Remove traditional dotfile configuration
-rm -rf ~/.hashi
-
-# Remove any local project configuration
-rm .hashi.toml
-```
 
 ## Quick Start
 
@@ -298,7 +215,7 @@ Settings are applied in the following order (highest to lowest):
 - **Path Validation**: Prevents directory traversal attacks (`..` sequences).
 - **Write Protection**: Automatically blocks writing output or logs to sensitive files (like `.env` or `.ssh/`) and directories.
 - **Obfuscated Errors**: Security-sensitive failures (like permission denied on a blacklisted path) return generic errors to prevent information leakage, unless `--verbose` is enabled.
-- **Integrity vs. Authenticity**: ZIP verification confirms **integrity** (bits are correct) but NOT **authenticity** (proof of origin).
+- **Integrity vs. Authenticity**: ZIP verification confirms **integrity** (bits are correct) but NOT **authenticity** (proof of origin). Malicious actors can craft files with valid CRC32 checksums. For authenticity verification, use cryptographic signatures (GPG, etc.) in addition to hash verification.
 
 ## Troubleshooting
 
@@ -374,20 +291,6 @@ file2.doc	a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890
 | 6 | Archive integrity verification failed |
 | 130 | Interrupted (Ctrl-C) |
 
-## Environment Variables
-
-- `NO_COLOR`: Disable color output
-- `DEBUG`: Enable debug logging
-- `HASHI_CONFIG`: Default config file path
-
-## Security Note
-
-**Integrity vs. Authenticity**
-
-hashi's ZIP verification confirms **integrity** (data not corrupted) using CRC32 checksums. This does NOT verify **authenticity** (data not tampered with). A malicious actor can craft a file with valid CRC32 checksums.
-
-For authenticity verification, use cryptographic signatures (GPG, etc.) in addition to hash verification.
-
 ## Dependencies
 
 - [github.com/fatih/color](https://github.com/fatih/color) - Color output
@@ -395,6 +298,25 @@ For authenticity verification, use cryptographic signatures (GPG, etc.) in addit
 - [github.com/spf13/pflag](https://github.com/spf13/pflag) - POSIX-compliant flag parsing
 - [github.com/joho/godotenv](https://github.com/joho/godotenv) - .env file support
 - [golang.org/x/term](https://pkg.go.dev/golang.org/x/term) - Terminal detection
+
+## AI Steering
+Certain phrases were used to attempt to keep AI on track. Some of them include:
+
+* "No Lock-Out: Users must never be locked out of functionality due to design choices. Default behaviors always have escape hatches." 
+
+* "hashi is a read-only informational tool that can only create or append to txt, json, log, and csv files."
+
+* (In regards to configuration files and settings) "hashi can't change hashi"
+
+* "I want to defend against a bad actor that can send any input and view any output."
+
+* "A CLI tool designed to help automate algorithmic hashing is the natural prey of bad actors."
+
+* (When discussing documentation) "Any competent developer should be able to pick up the project and continue work immediately."
+
+* "Before adding a new feature we must ask ourselves, does it bring value to the user? Is it worth the added complexity? Is this something the user wants, and how do they expect it to be delivered?"
+
+
 
 ## License
 
