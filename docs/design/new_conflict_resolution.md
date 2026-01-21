@@ -11,7 +11,7 @@ Instead of defining conflicts between every possible pair of flags (N! complexit
 
 1.  **Intent Collection:** Collect all flags provided by the user without immediate judgment.
 2.  **State Construction:** Apply intents to a `RunState` in a specific semantic order:
-    *   **Step 1: Mode** (What are we doing? e.g., `Standard`, `Boolean`, `Raw`, `Verify`)
+    *   **Step 1: Mode** (What are we doing? e.g., `Standard`, `Boolean`)
     *   **Step 2: Format** (How does it look? e.g., `Default`, `JSON`, `Plain`)
     *   **Step 3: Verbosity** (How loud is it? e.g., `Normal`, `Quiet`, `Verbose`)
 3.  **Validation:** Ensure the final state is sane.
@@ -78,12 +78,6 @@ Internal file writing flags (`--output` and `--log-file`) act as "Tees" (duplica
 **Resolution:** If both `--json` and `--plain` are present, the one specified last on the command line takes effect.
 
 *   **Rationale:** Similar to the "Alias Defense," this allows users to override a default output format set in a shell alias or configuration file. If a user has `alias hashi='hashi --json'`, they can still request plain output via `hashi --plain`. The explicit, most recent intent is honored.
-
-### E. Raw vs. Verify (Mode vs. Mode)
-**Decision:** **Hard Error (Mutually Exclusive)**.
-**Resolution:** The application will exit with an error if both `--raw` and `--verify` are specified.
-
-*   **Rationale:** These modes represent fundamentally incompatible ways of treating a file. `--raw` treats a file as an opaque sequence of bytes, while `--verify` treats it as a structured archive to be opened and inspected. Unlike output formats or verbosity levels, these behavioral modes are rarely aliased as defaults, making a hard error the safest way to prevent ambiguous or contradictory commands.
 
 ---
 

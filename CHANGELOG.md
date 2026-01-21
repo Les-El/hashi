@@ -5,10 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.19] - 2026-01-20
+## [0.0.19] - 2026-01-21
 
-### Fixed
-- Updated `hashi --help` examples to correctly reflect the use of the `--verify` flag for ZIP archive integrity checking.
+### Removed
+- Removed ZIP integrity verification functionality (`--verify` and `--raw` flags) to maintain simplicity and security.
+- Removed `internal/archive` package.
+- Removed CRC32 from auto-algorithm detection for hash strings.
+
+### Changed
+- Renumbered version from v1.0.19 to v0.0.19 to reflect reduced scope and pre-1.0 status.
 
 ## [1.0.18] - 2026-01-20
 

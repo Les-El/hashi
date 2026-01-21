@@ -603,23 +603,6 @@ func TestNewInvalidHashError(t *testing.T) {
 	}
 }
 
-// TestNewIntegrityError tests integrity error creation.
-func TestNewIntegrityError(t *testing.T) {
-	err := NewIntegrityError("archive.zip", "CRC32 mismatch in entry: file.txt")
-	
-	if err.Type != ErrorTypeIntegrity {
-		t.Errorf("Expected ErrorTypeIntegrity, got %v", err.Type)
-	}
-	
-	if !strings.Contains(err.Message, "archive.zip") {
-		t.Errorf("Expected message to contain filename, got %q", err.Message)
-	}
-	
-	if !strings.Contains(err.Suggestion, "CRC32") {
-		t.Errorf("Expected suggestion to contain details, got %q", err.Suggestion)
-	}
-}
-
 // TestNewConfigError tests config error creation.
 func TestNewConfigError(t *testing.T) {
 	err := NewConfigError("Invalid configuration value")

@@ -39,9 +39,6 @@ func DetermineExitCode(cfg *config.Config, result *hash.Result) int {
 			if _, ok := groups[ErrorTypeFileNotFound]; ok {
 				return config.ExitFileNotFound
 			}
-			if _, ok := groups[ErrorTypeIntegrity]; ok {
-				return config.ExitIntegrityFail
-			}
 		}
 		// Otherwise, it's a partial failure
 		return config.ExitPartialFailure

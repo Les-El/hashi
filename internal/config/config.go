@@ -30,7 +30,6 @@ const (
 	ExitInvalidArgs    = 3   // Invalid arguments or flags
 	ExitFileNotFound   = 4   // One or more files not found
 	ExitPermissionErr  = 5   // Permission denied
-	ExitIntegrityFail  = 6   // Archive integrity verification failed
 	ExitInterrupted    = 130 // Interrupted by Ctrl-C (128 + SIGINT)
 )
 
@@ -68,7 +67,6 @@ type EnvConfig struct {
 	HashiOutputFormat  string // HASHI_OUTPUT_FORMAT
 	HashiRecursive     bool   // HASHI_RECURSIVE
 	HashiHidden        bool   // HASHI_HIDDEN
-	HashiVerify        bool   // HASHI_VERIFY
 	HashiVerbose       bool   // HASHI_VERBOSE
 	HashiQuiet         bool   // HASHI_QUIET
 	HashiPreserveOrder bool   // HASHI_PRESERVE_ORDER
@@ -87,12 +85,10 @@ type Config struct {
 	Recursive     bool
 	Hidden        bool
 	Algorithm     string
-	Verify        bool
 	Verbose       bool
 	Quiet         bool
 	Bool          bool
 	PreserveOrder bool
-	Raw           bool // Reserved for future use
 
 	MatchRequired bool
 
@@ -339,7 +335,6 @@ type ConfigFile struct {
 		Quiet         *bool   `toml:"quiet,omitempty"`
 		Bool          *bool   `toml:"bool,omitempty"`
 		PreserveOrder *bool   `toml:"preserve_order,omitempty"`
-		Raw           *bool   `toml:"raw,omitempty"`
 		MatchRequired *bool   `toml:"match_required,omitempty"`
 		OutputFormat  *string `toml:"output_format,omitempty"`
 		OutputFile    *string `toml:"output_file,omitempty"`
@@ -423,9 +418,6 @@ func (cf *ConfigFile) ApplyConfigFile(cfg *Config, flagSet *pflag.FlagSet) error
 	}
 	if d.PreserveOrder != nil && !flagSet.Changed("preserve-order") {
 		cfg.PreserveOrder = *d.PreserveOrder
-	}
-	if d.Raw != nil && !flagSet.Changed("raw") {
-		cfg.Raw = *d.Raw
 	}
 	if d.MatchRequired != nil && !flagSet.Changed("match-required") {
 		cfg.MatchRequired = *d.MatchRequired
@@ -636,12 +628,10 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 	fs.BoolVarP(&cfg.Recursive, "recursive", "r", false, "Process directories recursively")
 	fs.BoolVar(&cfg.Hidden, "hidden", false, "Include hidden files")
 	fs.StringVarP(&cfg.Algorithm, "algorithm", "a", "sha256", "Hash algorithm")
-	fs.BoolVar(&cfg.Verify, "verify", false, "Verify ZIP archive integrity")
 	fs.BoolVarP(&cfg.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&cfg.Quiet, "quiet", "q", false, "Suppress stdout")
 	fs.BoolVarP(&cfg.Bool, "bool", "b", false, "Boolean output mode")
 	fs.BoolVar(&cfg.PreserveOrder, "preserve-order", false, "Keep input order")
-	fs.BoolVar(&cfg.Raw, "raw", false, "Treat files as raw bytes")
 	fs.BoolVar(&cfg.MatchRequired, "match-required", false, "Exit 0 only if matches found")
 	fs.StringVarP(&cfg.OutputFormat, "format", "f", "default", "Output format")
 	fs.StringVarP(&cfg.OutputFile, "output", "o", "", "Write output to file")
@@ -764,7 +754,6 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 		"quiet":   cfg.Quiet,
 		"verbose": cfg.Verbose,
 		"bool":    cfg.Bool,
-		"raw":     cfg.Raw,
 	}
 
 	state, resolveWarnings, err := conflict.ResolveState(args, flagSet, cfg.OutputFormat)
@@ -779,9 +768,6 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 	if state.Mode == conflict.ModeBool {
 		cfg.Bool = true
 		cfg.Quiet = true 
-	}
-	if state.Mode == conflict.ModeRaw {
-		cfg.Raw = true
 	}
 
 	// 4. Final Validation (non-conflict checks)
@@ -805,8 +791,6 @@ EXAMPLES
   hashi -b file1.txt file2.txt   Boolean check: do files match? (outputs true/false)
   hashi -r /path/to/dir          Recursively hash directory
   hashi --json *.txt             Output results as JSON
-  hashi --verify file.zip        Verify ZIP file integrity (CRC32)
-  hashi file.zip                 Hash ZIP file as standard file
   hashi -                        Read file list from stdin
 
 USAGE
@@ -822,7 +806,6 @@ FLAGS
       --hidden              Include hidden files
   -a, --algorithm string    Hash algorithm: sha256, md5, sha1, sha512, blake2b (default: sha256)
       --preserve-order      Keep input order instead of grouping by hash
-      --raw                 Treat files as raw bytes (bypass special handling)
 
 BOOLEAN MODE (-b / --bool)
   Boolean mode outputs just "true" or "false" for scripting use cases.
@@ -918,7 +901,6 @@ EXIT CODES
   3   Invalid arguments
   4   File not found
   5   Permission denied
-  6   Archive integrity verification failed
   130 Interrupted (Ctrl-C)
 
 ENVIRONMENT VARIABLES
@@ -957,7 +939,7 @@ For more information, visit: https://github.com/example/hashi
 }
 
 func VersionText() string {
-	return "hashi version 1.0.19"
+	return "hashi version 0.0.19"
 }
 
 func (c *Config) HasStdinMarker() bool {
@@ -1030,8 +1012,6 @@ func detectHashAlgorithm(hashStr string) []string {
 		return []string{}
 	}
 	switch len(hashStr) {
-	case 8:
-		return []string{"crc32"}
 	case 32:
 		return []string{"md5"}
 	case 40:

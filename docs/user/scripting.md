@@ -30,7 +30,6 @@ hashi uses meaningful exit codes for scripting:
 3   - Invalid arguments
 4   - File not found
 5   - Permission denied
-6   - Archive integrity verification failed
 130 - Interrupted (Ctrl-C)
 ```
 
@@ -63,18 +62,6 @@ HASH=$(hashi --quiet file.txt)
 # Use in comparison
 if [ "$(hashi --quiet file1.txt)" = "$(hashi --quiet file2.txt)" ]; then
     echo "Files match"
-fi
-```
-
-### Verify Archive Integrity
-
-```bash
-# Exit 0 if valid, 6 if corrupted
-if hashi --quiet --verify backup.tar.gz; then
-    echo "Archive is valid"
-else
-    echo "Archive is corrupted" >&2
-    exit 1
 fi
 ```
 

@@ -22,7 +22,7 @@ func TestConflictResolution_PipelineOfIntent(t *testing.T) {
 			name: "Default State",
 			args: []string{},
 			flagSet: map[string]bool{
-				"json": false, "plain": false, "quiet": false, "verbose": false, "bool": false, "raw": false,
+				"json": false, "plain": false, "quiet": false, "verbose": false, "bool": false,
 			},
 			expectedState: conflict.RunState{
 				Mode:      conflict.ModeStandard,
@@ -88,18 +88,6 @@ func TestConflictResolution_PipelineOfIntent(t *testing.T) {
 			expectedState: conflict.RunState{
 				Mode:      conflict.ModeStandard,
 				Format:    conflict.FormatVerbose,
-				Verbosity: conflict.VerbosityNormal,
-			},
-		},
-		{
-			name: "Raw Mode",
-			args: []string{"--raw"},
-			flagSet: map[string]bool{
-				"raw": true,
-			},
-			expectedState: conflict.RunState{
-				Mode:      conflict.ModeRaw,
-				Format:    conflict.FormatDefault,
 				Verbosity: conflict.VerbosityNormal,
 			},
 		},

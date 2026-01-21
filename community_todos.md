@@ -1,6 +1,6 @@
 # Community TODOs: Cross-Platform Verification
 
-The current version of `hashi` (v1.0.19) has been fully verified and signed off for **Linux**. To ensure a high-quality cross-platform experience, we need community assistance to verify installation and functionality on **Windows** and **macOS**.
+The current version of `hashi` (v0.0.19) has been fully verified and signed off for **Linux**. To ensure a high-quality cross-platform experience, we need community assistance to verify installation and functionality on **Windows** and **macOS**.
 
 ## Windows Verification
 
@@ -11,7 +11,6 @@ The current version of `hashi` (v1.0.19) has been fully verified and signed off 
 
 - [ ] **2. Functionality Testing**
     - [ ] Verify basic hashing of files and directories.
-    - [ ] Verify ZIP verification (`--verify`) works correctly on Windows.
     - [ ] Verify boolean mode (`-b`) and quiet mode (`-q`).
     - [ ] Verify environment variable precedence (`HASHI_ALGORITHM`, etc.) using `$env:VAR` syntax.
 
@@ -27,7 +26,6 @@ The current version of `hashi` (v1.0.19) has been fully verified and signed off 
 
 - [ ] **2. Functionality Testing**
     - [ ] Verify basic hashing and recursive directory scanning.
-    - [ ] Verify ZIP verification logic on macOS.
     - [ ] Verify TTY color detection works as expected in Terminal.app and iTerm2.
 
 - [ ] **3. Uninstallation Testing**

@@ -298,7 +298,7 @@ func TestDetectHashAlgorithm_HexValidation(t *testing.T) {
 				}
 			}
 			// Also check that length matches expected algorithm lengths
-			validLengths := []int{8, 32, 40, 64, 128}
+			validLengths := []int{32, 40, 64, 128}
 			validLength := false
 			for _, length := range validLengths {
 				if len(s) == length {
@@ -324,7 +324,7 @@ func TestDetectHashAlgorithm_HexValidation(t *testing.T) {
 			
 			// If it has valid hex but no algorithms, it must be wrong length
 			if !hasInvalidHex {
-				validLengths := []int{8, 32, 40, 64, 128}
+				validLengths := []int{32, 40, 64, 128}
 				for _, length := range validLengths {
 					if len(s) == length {
 						return false // Valid hex and valid length but no algorithms detected
@@ -348,7 +348,6 @@ func TestDetectHashAlgorithm_AlgorithmIdentification(t *testing.T) {
 	f := func(length int, hexChars []byte) bool {
 		// Only test valid algorithm lengths
 		validLengths := map[int][]string{
-			8:   {"crc32"},
 			32:  {AlgorithmMD5},
 			40:  {AlgorithmSHA1},
 			64:  {AlgorithmSHA256},
@@ -405,7 +404,7 @@ func TestDetectHashAlgorithm_AlgorithmIdentification(t *testing.T) {
 	config := &quick.Config{
 		Values: func(values []reflect.Value, rand *rand.Rand) {
 			// Generate a valid length
-			validLengths := []int{8, 32, 40, 64, 128}
+			validLengths := []int{32, 40, 64, 128}
 			length := validLengths[rand.Intn(len(validLengths))]
 			values[0] = reflect.ValueOf(length)
 			
@@ -433,7 +432,6 @@ func TestDetectHashAlgorithm(t *testing.T) {
 		expected []string
 	}{
 		// Valid hex strings of each length
-		{"valid crc32", "a1b2c3d4", []string{"crc32"}},
 		{"valid md5", "d41d8cd98f00b204e9800998ecf8427e", []string{AlgorithmMD5}},
 		{"valid sha1", "da39a3ee5e6b4b0d3255bfef95601890afd80709", []string{AlgorithmSHA1}},
 		{"valid sha256", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", []string{AlgorithmSHA256}},
@@ -461,7 +459,6 @@ func TestDetectHashAlgorithm(t *testing.T) {
 		// Edge cases
 		{"empty string", "", []string{}},
 		{"single char", "a", []string{}},
-		{"all zeros crc32", "00000000", []string{"crc32"}},
 		{"all zeros md5", "00000000000000000000000000000000", []string{AlgorithmMD5}},
 		{"all zeros sha256", "0000000000000000000000000000000000000000000000000000000000000000", []string{AlgorithmSHA256}},
 		{"all f's sha512", "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", []string{AlgorithmSHA512, AlgorithmBLAKE2b}},

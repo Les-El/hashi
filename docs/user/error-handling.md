@@ -17,7 +17,7 @@ Error: output file: output files must have extension: .txt, .json, .csv (got .py
 
 # Invalid algorithm
 $ hashi --algo invalid file.txt
-Error: invalid algorithm "invalid": must be one of sha256, md5, sha1, sha512, blake2b, crc32
+Error: invalid algorithm "invalid": must be one of sha256, md5, sha1, sha512, blake2b
 
 # Invalid output format
 $ hashi --format invalid file.txt

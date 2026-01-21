@@ -26,7 +26,6 @@ func TestHashValidationMode_ReportsCorrectAlgorithms_Property(t *testing.T) {
 	f := func(hashLength int, hexChars []byte) bool {
 		// Only test valid algorithm lengths
 		validLengths := map[int][]string{
-			8:   {"crc32"},
 			32:  {hash.AlgorithmMD5},
 			40:  {hash.AlgorithmSHA1},
 			64:  {hash.AlgorithmSHA256},
@@ -103,7 +102,7 @@ func TestHashValidationMode_ReportsCorrectAlgorithms_Property(t *testing.T) {
 	config := &quick.Config{
 		Values: func(values []reflect.Value, rand *rand.Rand) {
 			// Generate a valid length
-			validLengths := []int{8, 32, 40, 64, 128}
+			validLengths := []int{32, 40, 64, 128}
 			length := validLengths[rand.Intn(len(validLengths))]
 			values[0] = reflect.ValueOf(length)
 			
@@ -133,12 +132,6 @@ func TestHashValidationMode_ValidHashStrings(t *testing.T) {
 		expectedAlgorithms []string
 		expectedExitCode   int
 	}{
-		{
-			"valid crc32",
-			"a1b2c3d4",
-			[]string{"crc32"},
-			config.ExitSuccess,
-		},
 		{
 			"valid md5",
 			"d41d8cd98f00b204e9800998ecf8427e",

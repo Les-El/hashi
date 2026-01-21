@@ -4,5 +4,5 @@
 docs/archive
 GEMINI.md
 hashi.code-workspace
-./hashi
-dist/
+/hashi
+comprehensive_test_suite_2026-01-20.md

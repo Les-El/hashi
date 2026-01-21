@@ -29,8 +29,6 @@ const (
 	ErrorTypeInvalidInput
 	// ErrorTypeInvalidHash indicates an invalid hash format
 	ErrorTypeInvalidHash
-	// ErrorTypeIntegrity indicates an integrity verification failure
-	ErrorTypeIntegrity
 	// ErrorTypeConfig indicates a configuration error
 	ErrorTypeConfig
 )
@@ -210,16 +208,6 @@ func NewInvalidHashError(hash, algorithm string, expectedLen int) *Error {
 		Message: fmt.Sprintf("Invalid %s hash: %s", algorithm, truncateHash(hash)),
 		Suggestion: fmt.Sprintf("%s hashes must be exactly %d hexadecimal characters.\n"+
 			"  Your input has %d characters.", strings.ToUpper(algorithm), expectedLen, len(hash)),
-	}
-}
-
-// NewIntegrityError creates an integrity verification error.
-func NewIntegrityError(path string, details string) *Error {
-	return &Error{
-		Type:       ErrorTypeIntegrity,
-		Message:    fmt.Sprintf("Integrity check failed: %s", sanitizePath(path)),
-		Suggestion: details,
-		Path:       path,
 	}
 }
 

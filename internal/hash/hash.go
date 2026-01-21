@@ -155,8 +155,6 @@ func DetectHashAlgorithm(hashStr string) []string {
 
 	// Map lengths to algorithms
 	switch len(hashStr) {
-	case 8:
-		return []string{"crc32"}
 	case 32:
 		return []string{AlgorithmMD5}
 	case 40:

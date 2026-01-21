@@ -18,8 +18,6 @@ type Mode string
 const (
 	ModeStandard Mode = "standard"
 	ModeBool     Mode = "bool"   // --bool
-	ModeRaw      Mode = "raw"    // --raw
-	ModeVerify   Mode = "verify" // --verify
 )
 
 // Format defines the data output format (stdout).
@@ -112,62 +110,55 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string)
 		Verbosity: VerbosityNormal,
 	}
 
-	// 2a. Determine Format (Last One Wins)
-	if lastFormatPos >= 0 || lastFormatIntent != "" {
-		switch lastFormatIntent {
-		case "json":
-			state.Format = FormatJSON
-		case "plain":
-			state.Format = FormatPlain
-		case "verbose":
-			state.Format = FormatVerbose
-		case "default":
-			state.Format = FormatDefault
-		default:
-			// If unknown format was passed, preserve it so validation can catch it.
-			state.Format = Format(lastFormatIntent)
-		}
-	}
-
-	// 2b. Determine Verbosity (Quiet overrides Verbose)
-	// We check the flagSet (populated by pflag) because these boolean logic rules
-	// are "Existence" based, not "Order" based (per design doc).
-	isQuiet := flagSet["quiet"]
-	isVerbose := flagSet["verbose"]
-	
-	// Also check bool mode, which implies quiet
+	// 2a. Determine Mode (Bool overrides everything)
 	isBool := flagSet["bool"]
 
-	if isQuiet {
-		state.Verbosity = VerbosityQuiet
-		if isVerbose {
-			warnings = append(warnings, Warning{Message: "--quiet overrides --verbose"})
-		}
-	} else if isVerbose {
-		state.Verbosity = VerbosityVerbose
-		// Promote default format to verbose if -v is used (Requirement 17.1)
-		if state.Format == FormatDefault {
-			state.Format = FormatVerbose
-		}
-	}
-
-	// 2c. Determine Mode (Bool overrides everything)
-	isRaw := flagSet["raw"]
-	isVerify := flagSet["verify"]
-	
 	if isBool {
 		state.Mode = ModeBool
 		state.Verbosity = VerbosityQuiet // Bool implies Quiet
+	}
+
+	// 2b. Determine Format (Last One Wins)
+	if lastFormatPos >= 0 || lastFormatIntent != "" {
+		formatIntent := lastFormatIntent
 		
-		// Bool overrides Format
-		if state.Format != FormatDefault {
-			warnings = append(warnings, Warning{Message: fmt.Sprintf("--bool overrides --%s", state.Format)})
-			state.Format = FormatDefault // Reset to default (or we could define a FormatBool)
+		// If in bool mode, only warn if an explicit format was requested
+		if state.Mode == ModeBool && formatIntent != "" && formatIntent != "default" {
+			warnings = append(warnings, Warning{Message: fmt.Sprintf("--bool overrides --%s", formatIntent)})
+			state.Format = FormatDefault
+		} else if state.Mode != ModeBool {
+			switch formatIntent {
+			case "json":
+				state.Format = FormatJSON
+			case "plain":
+				state.Format = FormatPlain
+			case "verbose":
+				state.Format = FormatVerbose
+			case "default":
+				state.Format = FormatDefault
+			default:
+				state.Format = Format(formatIntent)
+			}
 		}
-	} else if isVerify {
-		state.Mode = ModeVerify
-	} else if isRaw {
-		state.Mode = ModeRaw
+	}
+
+	// 2c. Determine Verbosity (Quiet overrides Verbose)
+	isQuiet := flagSet["quiet"]
+	isVerbose := flagSet["verbose"]
+	
+	if state.Mode != ModeBool {
+		if isQuiet {
+			state.Verbosity = VerbosityQuiet
+			if isVerbose {
+				warnings = append(warnings, Warning{Message: "--quiet overrides --verbose"})
+			}
+		} else if isVerbose {
+			state.Verbosity = VerbosityVerbose
+			// Promote default format to verbose if -v is used (Requirement 17.1)
+			if state.Format == FormatDefault {
+				state.Format = FormatVerbose
+			}
+		}
 	}
 
 	// Phase 3: Validation (Hard Errors)

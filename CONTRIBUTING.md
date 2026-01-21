@@ -24,7 +24,6 @@ Everything should be designed with the question: "What functionality does the us
 A user must never be locked out of functionality due to our design choices.
 
 - Every default behavior has an escape hatch
-- Example: `--raw` bypasses ZIP auto-verification when users want to hash the file itself
 - Example: `--preserve-order` bypasses default grouping when users need input order
 - When adding new "smart" defaults, always provide a flag to override them
 

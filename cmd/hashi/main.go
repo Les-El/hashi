@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Les-El/hashi/internal/archive"
 	"github.com/Les-El/hashi/internal/color"
 	"github.com/Les-El/hashi/internal/config"
 	"github.com/Les-El/hashi/internal/conflict"
@@ -63,7 +62,7 @@ func main() {
 	defer cleanup()
 
 	// Display any warnings from conflict resolution (Context -> Stderr)
-	if len(warnings) > 0 && !cfg.Quiet {
+	if len(warnings) > 0 {
 		fmt.Fprint(streams.Err, conflict.FormatAllWarnings(warnings))
 	}
 
@@ -133,12 +132,6 @@ func main() {
 	if len(cfg.Files) == 1 && len(cfg.Hashes) == 1 {
 		// File + hash comparison mode: one file, one hash string
 		exitCode := runFileHashComparisonMode(cfg, colorHandler, streams)
-		os.Exit(exitCode)
-	}
-
-	// Archive verification mode (Task 33)
-	if cfg.Verify {
-		exitCode := runArchiveVerificationMode(cfg, colorHandler, streams, errHandler)
 		os.Exit(exitCode)
 	}
 
@@ -235,76 +228,6 @@ func runStandardHashingMode(cfg *config.Config, colorHandler *color.Handler, str
 
 	// 6. Determine exit code
 	return errors.DetermineExitCode(cfg, results)
-}
-
-// runArchiveVerificationMode verifies the integrity of archive files.
-func runArchiveVerificationMode(cfg *config.Config, colorHandler *color.Handler, streams *console.Streams, errHandler *errors.Handler) int {
-	verifier := archive.NewVerifier()
-	verifier.SetVerbose(cfg.Verbose)
-
-	allPassed := true
-	anyProcessed := false
-
-	// results for standard hashing if needed (mixed mode)
-	hResults := &hash.Result{
-		Entries: make([]hash.Entry, 0),
-	}
-	computer, _ := hash.NewComputer(cfg.Algorithm)
-
-	for _, path := range cfg.Files {
-		if verifier.IsArchiveFile(path) {
-			anyProcessed = true
-			result, err := verifier.VerifyZIP(path)
-			if err != nil {
-				fmt.Fprintln(streams.Err, errHandler.FormatError(err))
-				allPassed = false
-				continue
-			}
-
-			if !cfg.Quiet {
-				if cfg.Bool {
-					// In bool mode, we don't print individual results here
-				} else {
-					fmt.Fprint(streams.Out, verifier.FormatResult(result, true)) // Always verbose for verify mode?
-				}
-			}
-
-			if !result.Passed {
-				allPassed = false
-			}
-		} else {
-			// Process non-ZIP with standard hashing (Requirement 15.8)
-			anyProcessed = true
-			entry, err := computer.ComputeFile(path)
-			if err != nil {
-				fmt.Fprintln(streams.Err, errHandler.FormatError(err))
-				allPassed = false
-				continue
-			}
-			hResults.Entries = append(hResults.Entries, *entry)
-			
-			if !cfg.Quiet && !cfg.Bool {
-				fmt.Fprintf(streams.Out, "%-12s %s\n", path, entry.Hash)
-			}
-		}
-	}
-
-	if cfg.Bool {
-		if allPassed {
-			fmt.Fprintln(streams.Out, "true")
-		} else {
-			fmt.Fprintln(streams.Out, "false")
-		}
-	}
-
-	if !anyProcessed {
-		return config.ExitSuccess
-	}
-
-	if !allPassed {
-		return config.ExitIntegrityFail
-	}
-	return config.ExitSuccess
 }
 
 // groupResults categorizes entries into matches and unique hashes.

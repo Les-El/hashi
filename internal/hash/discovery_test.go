@@ -30,7 +30,7 @@ func TestDiscoverFiles(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, ".hidden_sub", "file3.txt"), []byte("3"), 0644)
 
 	t.Run("default discovery (non-recursive, no hidden)", func(t *testing.T) {
-		opts := DiscoveryOptions{Recursive: false, Hidden: false}
+		opts := DiscoveryOptions{Recursive: false, Hidden: false, MaxSize: -1}
 		files, err := DiscoverFiles([]string{tmpDir}, opts)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -45,7 +45,7 @@ func TestDiscoverFiles(t *testing.T) {
 	})
 
 	t.Run("recursive discovery", func(t *testing.T) {
-		opts := DiscoveryOptions{Recursive: true, Hidden: false}
+		opts := DiscoveryOptions{Recursive: true, Hidden: false, MaxSize: -1}
 		files, err := DiscoverFiles([]string{tmpDir}, opts)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -58,7 +58,7 @@ func TestDiscoverFiles(t *testing.T) {
 	})
 
 	t.Run("include hidden files", func(t *testing.T) {
-		opts := DiscoveryOptions{Recursive: true, Hidden: true}
+		opts := DiscoveryOptions{Recursive: true, Hidden: true, MaxSize: -1}
 		files, err := DiscoverFiles([]string{tmpDir}, opts)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

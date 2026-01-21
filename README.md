@@ -1,19 +1,18 @@
 # hashi
 
-hi! I'm hashi. 
+hi! I'm hashi
 
 I'm an intuitive CLI tool for hashing. I hope I can help!
 
 ## AI Declaration
 
-hashi was 100% written by AI. It began development on the Kiro IDE, using Claude for planning and coding. Work later moved Visual Studio Code, where Gemini CLI finished most of the work. 
+I was 100% written by AI. hashi began development on the Kiro IDE, using Claude for planning and coding. Work later moved Visual Studio Code, where Gemini CLI finished most of the work. 
 
 ## Features
 
 - **Human-first design**: Clear, colorized output with progress indicators
 - **Multiple output formats**: Default (grouped), verbose, JSON, and plain (for scripting)
 - **Flexible input**: Files, directories, stdin, and hash strings
-- **Archive verification**: ZIP file integrity checking via CRC32
 - **Robust error handling**: User-friendly messages with actionable suggestions
 - **Script-friendly**: Meaningful exit codes and quiet mode for automation
 
@@ -21,7 +20,7 @@ hashi was 100% written by AI. It began development on the Kiro IDE, using Claude
 
 ### Universal Installation (Linux / Windows / MacOS)
 
-To use the command-line installation, please make sure you have [Go](https://go.dev/dl/) installed on your system. Then open the terminal and enter the following
+The easiest way to get me up and running is to use the command-line installation. Make sure you have [Go](https://go.dev/dl/) installed on your system, then open your terminal and enter the following
 ```bash
 go install github.com/Les-El/hashi/cmd/hashi@latest
 ```
@@ -166,12 +165,6 @@ hashi -r /path/to/dir
 
 # Output as JSON
 hashi --json *.txt
-
-# Verify ZIP file integrity (CRC32)
-hashi --verify archive.zip
-
-# Hash ZIP file as raw bytes (default behavior)
-hashi archive.zip
 ```
 
 ## Configuration
@@ -215,7 +208,6 @@ Settings are applied in the following order (highest to lowest):
 - **Path Validation**: Prevents directory traversal attacks (`..` sequences).
 - **Write Protection**: Automatically blocks writing output or logs to sensitive files (like `.env` or `.ssh/`) and directories.
 - **Obfuscated Errors**: Security-sensitive failures (like permission denied on a blacklisted path) return generic errors to prevent information leakage, unless `--verbose` is enabled.
-- **Integrity vs. Authenticity**: ZIP verification confirms **integrity** (bits are correct) but NOT **authenticity** (proof of origin). Malicious actors can craft files with valid CRC32 checksums. For authenticity verification, use cryptographic signatures (GPG, etc.) in addition to hash verification.
 
 ## Troubleshooting
 
@@ -288,7 +280,6 @@ file2.doc	a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890
 | 3 | Invalid arguments |
 | 4 | File not found |
 | 5 | Permission denied |
-| 6 | Archive integrity verification failed |
 | 130 | Interrupted (Ctrl-C) |
 
 ## Dependencies

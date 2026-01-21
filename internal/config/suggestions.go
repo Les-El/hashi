@@ -16,7 +16,6 @@ var KnownFlags = []string{
 	"hidden",
 	"algorithm",
 	"preserve-order",
-	"raw",
 	"match-required",
 	"format",
 	"output",
