@@ -68,6 +68,7 @@ type EnvConfig struct {
 	HashiOutputFormat  string // HASHI_OUTPUT_FORMAT
 	HashiRecursive     bool   // HASHI_RECURSIVE
 	HashiHidden        bool   // HASHI_HIDDEN
+	HashiVerify        bool   // HASHI_VERIFY
 	HashiVerbose       bool   // HASHI_VERBOSE
 	HashiQuiet         bool   // HASHI_QUIET
 	HashiPreserveOrder bool   // HASHI_PRESERVE_ORDER
@@ -86,11 +87,12 @@ type Config struct {
 	Recursive     bool
 	Hidden        bool
 	Algorithm     string
+	Verify        bool
 	Verbose       bool
 	Quiet         bool
 	Bool          bool
 	PreserveOrder bool
-	Raw           bool
+	Raw           bool // Reserved for future use
 
 	MatchRequired bool
 
@@ -329,30 +331,34 @@ func LoadDotEnv(path string) error {
 }
 
 type ConfigFile struct {
-	Recursive     *bool   `toml:"recursive,omitempty"`
-	Hidden        *bool   `toml:"hidden,omitempty"`
-	Algorithm     *string `toml:"algorithm,omitempty"`
-	Verbose       *bool   `toml:"verbose,omitempty"`
-	Quiet         *bool   `toml:"quiet,omitempty"`
-	Bool          *bool   `toml:"bool,omitempty"`
-	PreserveOrder *bool   `toml:"preserve_order,omitempty"`
-	Raw           *bool   `toml:"raw,omitempty"`
-	MatchRequired *bool   `toml:"match_required,omitempty"`
-	OutputFormat  *string `toml:"output_format,omitempty"`
-	OutputFile    *string `toml:"output_file,omitempty"`
-	Append        *bool   `toml:"append,omitempty"`
-	Force         *bool   `toml:"force,omitempty"`
-	LogFile       *string `toml:"log_file,omitempty"`
-	LogJSON       *string `toml:"log_json,omitempty"`
-	Include       []string `toml:"include,omitempty"`
-	Exclude       []string `toml:"exclude,omitempty"`
-	MinSize       *string  `toml:"min_size,omitempty"`
-	MaxSize       *string  `toml:"max_size,omitempty"`
-	BlacklistFiles []string `toml:"blacklist_files,omitempty"`
-	BlacklistDirs  []string `toml:"blacklist_dirs,omitempty"`
-	WhitelistFiles []string `toml:"whitelist_files,omitempty"`
-	WhitelistDirs  []string `toml:"whitelist_dirs,omitempty"`
-	Files          []string `toml:"files,omitempty"`
+	Defaults struct {
+		Recursive     *bool   `toml:"recursive,omitempty"`
+		Hidden        *bool   `toml:"hidden,omitempty"`
+		Algorithm     *string `toml:"algorithm,omitempty"`
+		Verbose       *bool   `toml:"verbose,omitempty"`
+		Quiet         *bool   `toml:"quiet,omitempty"`
+		Bool          *bool   `toml:"bool,omitempty"`
+		PreserveOrder *bool   `toml:"preserve_order,omitempty"`
+		Raw           *bool   `toml:"raw,omitempty"`
+		MatchRequired *bool   `toml:"match_required,omitempty"`
+		OutputFormat  *string `toml:"output_format,omitempty"`
+		OutputFile    *string `toml:"output_file,omitempty"`
+		Append        *bool   `toml:"append,omitempty"`
+		Force         *bool   `toml:"force,omitempty"`
+		LogFile       *string `toml:"log_file,omitempty"`
+		LogJSON       *string `toml:"log_json,omitempty"`
+		Include       []string `toml:"include,omitempty"`
+		Exclude       []string `toml:"exclude,omitempty"`
+		MinSize       *string  `toml:"min_size,omitempty"`
+		MaxSize       *string  `toml:"max_size,omitempty"`
+	} `toml:"defaults"`
+	Security struct {
+		BlacklistFiles []string `toml:"blacklist_files,omitempty"`
+		BlacklistDirs  []string `toml:"blacklist_dirs,omitempty"`
+		WhitelistFiles []string `toml:"whitelist_files,omitempty"`
+		WhitelistDirs  []string `toml:"whitelist_dirs,omitempty"`
+	} `toml:"security"`
+	Files []string `toml:"files,omitempty"`
 }
 
 func LoadConfigFile(path string) (*ConfigFile, error) {
@@ -397,90 +403,93 @@ func loadTextConfig(file *os.File) (*ConfigFile, error) {
 	return cfg, nil
 }
 
-func (cf *ConfigFile) ApplyConfigFile(cfg *Config) error {
-	if cf.Recursive != nil && !cfg.Recursive {
-		cfg.Recursive = *cf.Recursive
+func (cf *ConfigFile) ApplyConfigFile(cfg *Config, flagSet *pflag.FlagSet) error {
+	d := cf.Defaults
+	
+	if d.Recursive != nil && !flagSet.Changed("recursive") {
+		cfg.Recursive = *d.Recursive
 	}
-	if cf.Hidden != nil && !cfg.Hidden {
-		cfg.Hidden = *cf.Hidden
+	if d.Hidden != nil && !flagSet.Changed("hidden") {
+		cfg.Hidden = *d.Hidden
 	}
-	if cf.Verbose != nil && !cfg.Verbose {
-		cfg.Verbose = *cf.Verbose
+	if d.Verbose != nil && !flagSet.Changed("verbose") {
+		cfg.Verbose = *d.Verbose
 	}
-	if cf.Quiet != nil && !cfg.Quiet {
-		cfg.Quiet = *cf.Quiet
+	if d.Quiet != nil && !flagSet.Changed("quiet") {
+		cfg.Quiet = *d.Quiet
 	}
-	if cf.Bool != nil && !cfg.Bool {
-		cfg.Bool = *cf.Bool
+	if d.Bool != nil && !flagSet.Changed("bool") {
+		cfg.Bool = *d.Bool
 	}
-	if cf.PreserveOrder != nil && !cfg.PreserveOrder {
-		cfg.PreserveOrder = *cf.PreserveOrder
+	if d.PreserveOrder != nil && !flagSet.Changed("preserve-order") {
+		cfg.PreserveOrder = *d.PreserveOrder
 	}
-	if cf.Raw != nil && !cfg.Raw {
-		cfg.Raw = *cf.Raw
+	if d.Raw != nil && !flagSet.Changed("raw") {
+		cfg.Raw = *d.Raw
 	}
-	if cf.MatchRequired != nil && !cfg.MatchRequired {
-		cfg.MatchRequired = *cf.MatchRequired
+	if d.MatchRequired != nil && !flagSet.Changed("match-required") {
+		cfg.MatchRequired = *d.MatchRequired
 	}
-	if cf.Append != nil && !cfg.Append {
-		cfg.Append = *cf.Append
+	if d.Append != nil && !flagSet.Changed("append") {
+		cfg.Append = *d.Append
 	}
-	if cf.Force != nil && !cfg.Force {
-		cfg.Force = *cf.Force
+	if d.Force != nil && !flagSet.Changed("force") {
+		cfg.Force = *d.Force
 	}
 	
-	if cf.Algorithm != nil && cfg.Algorithm == "sha256" {
-		cfg.Algorithm = *cf.Algorithm
+	if d.Algorithm != nil && !flagSet.Changed("algorithm") {
+		cfg.Algorithm = *d.Algorithm
 	}
-	if cf.OutputFormat != nil && cfg.OutputFormat == "default" {
-		cfg.OutputFormat = *cf.OutputFormat
+	if d.OutputFormat != nil && !flagSet.Changed("format") {
+		cfg.OutputFormat = *d.OutputFormat
 	}
-	if cf.OutputFile != nil && cfg.OutputFile == "" {
-		cfg.OutputFile = *cf.OutputFile
+	if d.OutputFile != nil && !flagSet.Changed("output") {
+		cfg.OutputFile = *d.OutputFile
 	}
-	if cf.LogFile != nil && cfg.LogFile == "" {
-		cfg.LogFile = *cf.LogFile
+	if d.LogFile != nil && !flagSet.Changed("log-file") {
+		cfg.LogFile = *d.LogFile
 	}
-	if cf.LogJSON != nil && cfg.LogJSON == "" {
-		cfg.LogJSON = *cf.LogJSON
+	if d.LogJSON != nil && !flagSet.Changed("log-json") {
+		cfg.LogJSON = *d.LogJSON
 	}
 	
-	if cf.MinSize != nil && cfg.MinSize == 0 {
-		size, err := parseSize(*cf.MinSize)
+	if d.MinSize != nil && !flagSet.Changed("min-size") {
+		size, err := parseSize(*d.MinSize)
 		if err != nil {
 			return fmt.Errorf("invalid min_size in config: %w", err)
 		}
 		cfg.MinSize = size
 	}
-	if cf.MaxSize != nil && cfg.MaxSize == -1 {
-		size, err := parseSize(*cf.MaxSize)
+	if d.MaxSize != nil && !flagSet.Changed("max-size") {
+		size, err := parseSize(*d.MaxSize)
 		if err != nil {
 			return fmt.Errorf("invalid max_size in config: %w", err)
 		}
 		cfg.MaxSize = size
 	}
 	
-	if len(cf.Include) > 0 && len(cfg.Include) == 0 {
-		cfg.Include = cf.Include
+	if len(d.Include) > 0 && !flagSet.Changed("include") {
+		cfg.Include = d.Include
 	}
-	if len(cf.Exclude) > 0 && len(cfg.Exclude) == 0 {
-		cfg.Exclude = cf.Exclude
-	}
-	
-	if len(cf.BlacklistFiles) > 0 {
-		cfg.BlacklistFiles = append(cfg.BlacklistFiles, cf.BlacklistFiles...)
-	}
-	if len(cf.BlacklistDirs) > 0 {
-		cfg.BlacklistDirs = append(cfg.BlacklistDirs, cf.BlacklistDirs...)
-	}
-	if len(cf.WhitelistFiles) > 0 {
-		cfg.WhitelistFiles = append(cfg.WhitelistFiles, cf.WhitelistFiles...)
-	}
-	if len(cf.WhitelistDirs) > 0 {
-		cfg.WhitelistDirs = append(cfg.WhitelistDirs, cf.WhitelistDirs...)
+	if len(d.Exclude) > 0 && !flagSet.Changed("exclude") {
+		cfg.Exclude = d.Exclude
 	}
 	
-	if len(cf.Files) > 0 && len(cf.Files) == 0 {
+	s := cf.Security
+	if len(s.BlacklistFiles) > 0 {
+		cfg.BlacklistFiles = append(cfg.BlacklistFiles, s.BlacklistFiles...)
+	}
+	if len(s.BlacklistDirs) > 0 {
+		cfg.BlacklistDirs = append(cfg.BlacklistDirs, s.BlacklistDirs...)
+	}
+	if len(s.WhitelistFiles) > 0 {
+		cfg.WhitelistFiles = append(cfg.WhitelistFiles, s.WhitelistFiles...)
+	}
+	if len(s.WhitelistDirs) > 0 {
+		cfg.WhitelistDirs = append(cfg.WhitelistDirs, s.WhitelistDirs...)
+	}
+	
+	if len(cf.Files) > 0 && len(cfg.Files) == 0 {
 		cfg.Files = cf.Files
 	}
 	
@@ -627,6 +636,7 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 	fs.BoolVarP(&cfg.Recursive, "recursive", "r", false, "Process directories recursively")
 	fs.BoolVar(&cfg.Hidden, "hidden", false, "Include hidden files")
 	fs.StringVarP(&cfg.Algorithm, "algorithm", "a", "sha256", "Hash algorithm")
+	fs.BoolVar(&cfg.Verify, "verify", false, "Verify ZIP archive integrity")
 	fs.BoolVarP(&cfg.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&cfg.Quiet, "quiet", "q", false, "Suppress stdout")
 	fs.BoolVarP(&cfg.Bool, "bool", "b", false, "Boolean output mode")
@@ -726,9 +736,7 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 		cfg.Hashes = hashes
 	}
 
-	envCfg := LoadEnvConfig()
-	envCfg.ApplyEnvConfig(cfg, fs)
-
+	// 1. Apply Config File (Lower precedence than Env Vars)
 	configPath := cfg.ConfigFile
 	if configPath == "" {
 		configPath = FindConfigFile()
@@ -738,10 +746,14 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to load config file %s: %w", configPath, err)
 		}
-		if err := configFile.ApplyConfigFile(cfg); err != nil {
+		if err := configFile.ApplyConfigFile(cfg, fs); err != nil {
 			return nil, nil, fmt.Errorf("failed to apply config file %s: %w", configPath, err)
 		}
 	}
+
+	// 2. Apply Environment Variables (Higher precedence than Config File)
+	envCfg := LoadEnvConfig()
+	envCfg.ApplyEnvConfig(cfg, fs)
 
 	// CONFLICT RESOLUTION LOGIC
 	
@@ -793,8 +805,8 @@ EXAMPLES
   hashi -b file1.txt file2.txt   Boolean check: do files match? (outputs true/false)
   hashi -r /path/to/dir          Recursively hash directory
   hashi --json *.txt             Output results as JSON
-  hashi file.zip                 Verify ZIP file integrity (CRC32)
-  hashi --raw file.zip           Hash ZIP file as raw bytes
+  hashi --verify file.zip        Verify ZIP file integrity (CRC32)
+  hashi file.zip                 Hash ZIP file as standard file
   hashi -                        Read file list from stdin
 
 USAGE
@@ -945,7 +957,7 @@ For more information, visit: https://github.com/example/hashi
 }
 
 func VersionText() string {
-	return "hashi version 1.0.12"
+	return "hashi version 1.0.19"
 }
 
 func (c *Config) HasStdinMarker() bool {

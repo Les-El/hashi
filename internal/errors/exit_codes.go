@@ -2,12 +2,25 @@
 package errors
 
 import (
+	"os"
+
 	"github.com/Les-El/hashi/internal/config"
 	"github.com/Les-El/hashi/internal/hash"
 )
 
 // ExitCode constants are defined in internal/config/config.go to avoid circular dependencies
 // and because they are part of the application's configuration contract.
+
+// DetermineDiscoveryExitCode determines the exit code for errors during file discovery.
+func DetermineDiscoveryExitCode(err error) int {
+	if os.IsNotExist(err) {
+		return config.ExitFileNotFound
+	}
+	if os.IsPermission(err) {
+		return config.ExitPermissionErr
+	}
+	return config.ExitPartialFailure
+}
 
 // DetermineExitCode determines the final exit code based on the operation results and configuration.
 func DetermineExitCode(cfg *config.Config, result *hash.Result) int {

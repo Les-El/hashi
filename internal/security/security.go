@@ -180,7 +180,7 @@ func ValidateInputs(files []string, hashes []string, opts Options) error {
 	// Hashes are already classified and normalized, but we can do a sanity check
 	for _, h := range hashes {
 		if !isValidHex(h) {
-			return formatSecurityError(opts.Verbose, "invalid hash string format")
+			return fmt.Errorf("invalid hash string format: %s", h)
 		}
 	}
 	return nil

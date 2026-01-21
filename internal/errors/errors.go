@@ -278,6 +278,7 @@ func sanitizeErrorMessage(msg string) string {
 		"open ",
 		"read ",
 		"stat ",
+		"lstat ",
 	}
 
 	for _, prefix := range prefixes {
@@ -298,6 +299,7 @@ func extractPath(errStr string) string {
 		path = strings.TrimPrefix(path, "open ")
 		path = strings.TrimPrefix(path, "read ")
 		path = strings.TrimPrefix(path, "stat ")
+		path = strings.TrimPrefix(path, "lstat ")
 		return path
 	}
 	return errStr

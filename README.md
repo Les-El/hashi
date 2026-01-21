@@ -168,10 +168,10 @@ hashi -r /path/to/dir
 hashi --json *.txt
 
 # Verify ZIP file integrity (CRC32)
-hashi archive.zip
+hashi --verify archive.zip
 
-# Hash ZIP file as raw bytes (instead of verifying)
-hashi --raw archive.zip
+# Hash ZIP file as raw bytes (default behavior)
+hashi archive.zip
 ```
 
 ## Configuration

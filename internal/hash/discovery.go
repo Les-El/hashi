@@ -5,14 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // DiscoveryOptions defines criteria for file discovery.
 type DiscoveryOptions struct {
-	Recursive bool
-	Hidden    bool
-	Include   []string
-	Exclude   []string
+	Recursive      bool
+	Hidden         bool
+	Include        []string
+	Exclude        []string
+	MinSize        int64
+	MaxSize        int64
+	ModifiedAfter  time.Time
+	ModifiedBefore time.Time
 }
 
 // DiscoverFiles finds all files in the given paths based on options.
@@ -57,8 +62,47 @@ func DiscoverFiles(paths []string, opts DiscoveryOptions) ([]string, error) {
 				return nil
 			}
 
-			// 3. Apply filters (basic implementation for now, Task 39 will enhance)
-			// For Task 24, we just need basic discovery
+			// 3. Apply filters
+			
+			// Size filters
+			if opts.MinSize > 0 && info.Size() < opts.MinSize {
+				return nil
+			}
+			if opts.MaxSize != -1 && info.Size() > opts.MaxSize {
+				return nil
+			}
+
+			// Date filters
+			if !opts.ModifiedAfter.IsZero() && info.ModTime().Before(opts.ModifiedAfter) {
+				return nil
+			}
+			if !opts.ModifiedBefore.IsZero() && info.ModTime().After(opts.ModifiedBefore) {
+				return nil
+			}
+
+			// Name/Glob filters
+			name := filepath.Base(path)
+			
+			// Exclude patterns (checked first)
+			for _, pattern := range opts.Exclude {
+				if matched, _ := filepath.Match(pattern, name); matched {
+					return nil
+				}
+			}
+
+			// Include patterns
+			if len(opts.Include) > 0 {
+				anyMatch := false
+				for _, pattern := range opts.Include {
+					if matched, _ := filepath.Match(pattern, name); matched {
+						anyMatch = true
+						break
+					}
+				}
+				if !anyMatch {
+					return nil
+				}
+			}
 			
 			discovered = append(discovered, path)
 			return nil

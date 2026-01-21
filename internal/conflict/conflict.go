@@ -17,9 +17,9 @@ type Mode string
 
 const (
 	ModeStandard Mode = "standard"
-	ModeBool     Mode = "bool" // --bool
-	ModeRaw      Mode = "raw"  // --raw
-	// ModeVerify Mode = "verify" // --verify (future)
+	ModeBool     Mode = "bool"   // --bool
+	ModeRaw      Mode = "raw"    // --raw
+	ModeVerify   Mode = "verify" // --verify
 )
 
 // Format defines the data output format (stdout).
@@ -145,11 +145,15 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string)
 		}
 	} else if isVerbose {
 		state.Verbosity = VerbosityVerbose
+		// Promote default format to verbose if -v is used (Requirement 17.1)
+		if state.Format == FormatDefault {
+			state.Format = FormatVerbose
+		}
 	}
 
 	// 2c. Determine Mode (Bool overrides everything)
 	isRaw := flagSet["raw"]
-	// isVerify := flagSet["verify"] // Future
+	isVerify := flagSet["verify"]
 	
 	if isBool {
 		state.Mode = ModeBool
@@ -160,17 +164,14 @@ func ResolveState(args []string, flagSet map[string]bool, explicitFormat string)
 			warnings = append(warnings, Warning{Message: fmt.Sprintf("--bool overrides --%s", state.Format)})
 			state.Format = FormatDefault // Reset to default (or we could define a FormatBool)
 		}
+	} else if isVerify {
+		state.Mode = ModeVerify
 	} else if isRaw {
 		state.Mode = ModeRaw
 	}
 
 	// Phase 3: Validation (Hard Errors)
 	
-	// Raw vs Verify (Future check, but good to have structure)
-	// if isRaw && isVerify {
-	// 	 return nil, warnings, fmt.Errorf("--raw and --verify are mutually exclusive")
-	// }
-
 	return state, warnings, nil
 }
 

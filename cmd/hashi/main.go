@@ -13,11 +13,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/Les-El/hashi/internal/archive"
 	"github.com/Les-El/hashi/internal/color"
 	"github.com/Les-El/hashi/internal/config"
 	"github.com/Les-El/hashi/internal/conflict"
@@ -77,19 +79,28 @@ func main() {
 		os.Exit(config.ExitSuccess)
 	}
 
-	// 4. Discover/Expand files based on paths and options
+	// 4. Handle stdin file list expansion
+	if cfg.HasStdinMarker() {
+		cfg.Files = expandStdinFiles(cfg.Files)
+	}
+
+	// 5. Discover/Expand files based on paths and options
 	// We skip discovery if we are ONLY validating hash strings (no files provided)
 	if len(cfg.Files) > 0 || len(cfg.Hashes) == 0 {
 		discOpts := hash.DiscoveryOptions{
-			Recursive: cfg.Recursive,
-			Hidden:    cfg.Hidden,
-			Include:   cfg.Include,
-			Exclude:   cfg.Exclude,
+			Recursive:      cfg.Recursive,
+			Hidden:         cfg.Hidden,
+			Include:        cfg.Include,
+			Exclude:        cfg.Exclude,
+			MinSize:        cfg.MinSize,
+			MaxSize:        cfg.MaxSize,
+			ModifiedAfter:  cfg.ModifiedAfter,
+			ModifiedBefore: cfg.ModifiedBefore,
 		}
 		discovered, err := hash.DiscoverFiles(cfg.Files, discOpts)
 		if err != nil {
 			fmt.Fprintln(streams.Err, errHandler.FormatError(err))
-			os.Exit(config.ExitPartialFailure)
+			os.Exit(errors.DetermineDiscoveryExitCode(err))
 		}
 		cfg.Files = discovered
 	}
@@ -125,14 +136,17 @@ func main() {
 		os.Exit(exitCode)
 	}
 
+	// Archive verification mode (Task 33)
+	if cfg.Verify {
+		exitCode := runArchiveVerificationMode(cfg, colorHandler, streams, errHandler)
+		os.Exit(exitCode)
+	}
+
 	// Standard file processing mode
 	if len(cfg.Files) > 0 {
 		exitCode := runStandardHashingMode(cfg, colorHandler, streams, errHandler)
 		os.Exit(exitCode)
 	}
-
-	// Archive verification mode (Task 33)
-	// TODO: Implement archive verification mode
 
 	os.Exit(config.ExitSuccess)
 }
@@ -196,13 +210,101 @@ func runStandardHashingMode(cfg *config.Config, colorHandler *color.Handler, str
 	results.Matches, results.Unmatched = groupResults(results.Entries)
 
 	// 5. Format and output results (Data -> Stdout)
-	if !cfg.Quiet {
+	if cfg.Bool {
+		success := false
+		if cfg.MatchRequired {
+			success = len(results.Matches) > 0
+		} else {
+			// All files must match (one group, zero unmatched)
+			// Special case for single file: always true if no errors
+			if len(results.Entries) == 1 && len(results.Errors) == 0 {
+				success = true
+			} else {
+				success = len(results.Matches) == 1 && len(results.Unmatched) == 0
+			}
+		}
+		if success {
+			fmt.Fprintln(streams.Out, "true")
+		} else {
+			fmt.Fprintln(streams.Out, "false")
+		}
+	} else if !cfg.Quiet {
 		formatter := output.NewFormatter(cfg.OutputFormat, cfg.PreserveOrder)
 		fmt.Fprintln(streams.Out, formatter.Format(results))
 	}
 
 	// 6. Determine exit code
 	return errors.DetermineExitCode(cfg, results)
+}
+
+// runArchiveVerificationMode verifies the integrity of archive files.
+func runArchiveVerificationMode(cfg *config.Config, colorHandler *color.Handler, streams *console.Streams, errHandler *errors.Handler) int {
+	verifier := archive.NewVerifier()
+	verifier.SetVerbose(cfg.Verbose)
+
+	allPassed := true
+	anyProcessed := false
+
+	// results for standard hashing if needed (mixed mode)
+	hResults := &hash.Result{
+		Entries: make([]hash.Entry, 0),
+	}
+	computer, _ := hash.NewComputer(cfg.Algorithm)
+
+	for _, path := range cfg.Files {
+		if verifier.IsArchiveFile(path) {
+			anyProcessed = true
+			result, err := verifier.VerifyZIP(path)
+			if err != nil {
+				fmt.Fprintln(streams.Err, errHandler.FormatError(err))
+				allPassed = false
+				continue
+			}
+
+			if !cfg.Quiet {
+				if cfg.Bool {
+					// In bool mode, we don't print individual results here
+				} else {
+					fmt.Fprint(streams.Out, verifier.FormatResult(result, true)) // Always verbose for verify mode?
+				}
+			}
+
+			if !result.Passed {
+				allPassed = false
+			}
+		} else {
+			// Process non-ZIP with standard hashing (Requirement 15.8)
+			anyProcessed = true
+			entry, err := computer.ComputeFile(path)
+			if err != nil {
+				fmt.Fprintln(streams.Err, errHandler.FormatError(err))
+				allPassed = false
+				continue
+			}
+			hResults.Entries = append(hResults.Entries, *entry)
+			
+			if !cfg.Quiet && !cfg.Bool {
+				fmt.Fprintf(streams.Out, "%-12s %s\n", path, entry.Hash)
+			}
+		}
+	}
+
+	if cfg.Bool {
+		if allPassed {
+			fmt.Fprintln(streams.Out, "true")
+		} else {
+			fmt.Fprintln(streams.Out, "false")
+		}
+	}
+
+	if !anyProcessed {
+		return config.ExitSuccess
+	}
+
+	if !allPassed {
+		return config.ExitIntegrityFail
+	}
+	return config.ExitSuccess
 }
 
 // groupResults categorizes entries into matches and unique hashes.
@@ -358,6 +460,30 @@ func runFileHashComparisonMode(cfg *config.Config, colorHandler *color.Handler, 
 			fmt.Fprintf(streams.Out, "  Expected: %s\n", expectedHash)
 			fmt.Fprintf(streams.Out, "  Computed: %s\n", entry.Hash)
 		}
-		return config.ExitNoMatches // Exit code 1 for mismatch
-	}
-}
+				return config.ExitNoMatches // Exit code 1 for mismatch
+			}
+		}
+		
+		// expandStdinFiles reads file paths from stdin and adds them to the file list.
+		func expandStdinFiles(files []string) []string {
+			var result []string
+			
+			// Remove the "-" marker
+			for _, f := range files {
+				if f != "-" {
+					result = append(result, f)
+				}
+			}
+			
+			// Read from stdin
+			scanner := bufio.NewScanner(os.Stdin)
+			for scanner.Scan() {
+				path := strings.TrimSpace(scanner.Text())
+				if path != "" {
+					result = append(result, path)
+				}
+			}
+			
+			return result
+		}
+		

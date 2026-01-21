@@ -80,6 +80,54 @@ func TestParseArgs_BoolWithMatchFlags(t *testing.T) {
 	}
 }
 
+// TestParseArgs_Verify tests the --verify flag.
+func TestParseArgs_Verify(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"verify enabled", []string{"--verify"}, true},
+		{"verify disabled", []string{"file.txt"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, _, err := ParseArgs(tt.args)
+			if err != nil {
+				t.Fatalf("ParseArgs() error = %v", err)
+			}
+			if cfg.Verify != tt.want {
+				t.Errorf("Verify = %v, want %v", cfg.Verify, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseArgs_RawStub tests the --raw flag stub.
+func TestParseArgs_RawStub(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"raw enabled", []string{"--raw"}, true},
+		{"raw disabled", []string{"file.txt"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, _, err := ParseArgs(tt.args)
+			if err != nil {
+				t.Fatalf("ParseArgs() error = %v", err)
+			}
+			if cfg.Raw != tt.want {
+				t.Errorf("Raw = %v, want %v", cfg.Raw, tt.want)
+			}
+		})
+	}
+}
+
 // TestParseArgs_Help tests that help flags are recognized.
 func TestParseArgs_Help(t *testing.T) {
 	tests := []struct {
