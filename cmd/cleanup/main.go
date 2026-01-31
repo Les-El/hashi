@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Les-El/hashi/internal/checkpoint"
+	"github.com/Les-El/chexum/internal/checkpoint"
 )
 
 func main() {
@@ -72,7 +72,7 @@ func showDryRunInfo() {
 	fmt.Printf("Base directory: %s\n", tmpDir)
 	fmt.Println("Would clean:")
 	fmt.Printf("  - %s/go-build* directories\n", tmpDir)
-	fmt.Printf("  - %s/hashi-* files\n", tmpDir)
+	fmt.Printf("  - %s/chexum-* files\n", tmpDir)
 	fmt.Printf("  - %s/checkpoint-* files\n", tmpDir)
 	fmt.Printf("  - %s/test-* files\n", tmpDir)
 	fmt.Printf("  - %s/*.tmp files\n", tmpDir)

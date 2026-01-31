@@ -1,6 +1,6 @@
-# File Filtering in hashi
+# File Filtering in chexum
 
-hashi provides powerful filtering options to help you focus on the files that matter. Filters can be combined to create complex selection rules.
+chexum provides powerful filtering options to help you focus on the files that matter. Filters can be combined to create complex selection rules.
 
 ## Pattern Matching
 
@@ -11,10 +11,10 @@ Only files matching the pattern(s) will be processed.
 
 ```bash
 # Only process .go files
-hashi --include "*.go"
+chexum --include "*.go"
 
 # Only process .jpg and .png files
-hashi -i "*.jpg" -i "*.png"
+chexum -i "*.jpg" -i "*.png"
 ```
 
 ### Excluding Files (`--exclude`, `-e`)
@@ -22,10 +22,10 @@ Files matching the pattern(s) will be skipped. Exclude patterns take precedence 
 
 ```bash
 # Skip all log files
-hashi --exclude "*.log"
+chexum --exclude "*.log"
 
 # Process all files except those in node_modules (if using -r)
-hashi -r --exclude "node_modules/*"
+chexum -r --exclude "node_modules/*"
 ```
 
 ## Size Filtering
@@ -37,10 +37,10 @@ Only process files larger than or equal to the specified size.
 
 ```bash
 # Only process files at least 1MB
-hashi --min-size 1MB
+chexum --min-size 1MB
 
 # Units supported: B, KB, MB, GB, TB
-hashi --min-size 500KB
+chexum --min-size 500KB
 ```
 
 ### Maximum Size (`--max-size`)
@@ -48,7 +48,7 @@ Only process files smaller than or equal to the specified size.
 
 ```bash
 # Skip files larger than 1GB
-hashi --max-size 1GB
+chexum --max-size 1GB
 ```
 
 ## Date Filtering
@@ -60,7 +60,7 @@ Only process files modified on or after the given date.
 
 ```bash
 # Only process files modified in 2024
-hashi --modified-after 2024-01-01
+chexum --modified-after 2024-01-01
 ```
 
 ### Modified Before (`--modified-before`)
@@ -68,7 +68,7 @@ Only process files modified on or before the given date.
 
 ```bash
 # Only process old files
-hashi --modified-before 2023-12-31
+chexum --modified-before 2023-12-31
 ```
 
 ## Combining Filters
@@ -77,5 +77,5 @@ When multiple filters are provided, they are combined using **AND** logic. A fil
 
 ```bash
 # Process .pdf files larger than 10MB modified this year
-hashi --include "*.pdf" --min-size 10MB --modified-after 2024-01-01
+chexum --include "*.pdf" --min-size 10MB --modified-after 2024-01-01
 ```

@@ -2,7 +2,7 @@
 
 ## Decision
 
-Removed the `--no-match-required` flag from hashi. This flag was redundant and could be replaced with simple negation.
+Removed the `--no-match-required` flag from chexum. This flag was redundant and could be replaced with simple negation.
 
 ## Rationale
 
@@ -11,12 +11,12 @@ Everything `--no-match-required` did can be accomplished with `!`:
 
 ```bash
 # Old way (with --no-match-required)
-hashi --no-match-required *.txt && echo "All unique"
+chexum --no-match-required *.txt && echo "All unique"
 
 # New way (with negation)
-! hashi --match-required *.txt && echo "All unique"
+! chexum --any-match *.txt && echo "All unique"
 # or
-hashi --match-required *.txt || echo "All unique"
+chexum --any-match *.txt || echo "All unique"
 ```
 
 ### 2. Confusing Name
@@ -58,21 +58,21 @@ For users who might have been using `--no-match-required`:
 ### Before (with --no-match-required)
 ```bash
 # Check if all files are unique
-hashi --no-match-required *.txt
+chexum --no-match-required *.txt
 exit_code=$?
 
 # With boolean mode
-hashi -b --no-match-required *.txt
+chexum -b --no-match-required *.txt
 ```
 
 ### After (with negation)
 ```bash
 # Check if all files are unique
-! hashi --match-required *.txt
+! chexum --any-match *.txt
 exit_code=$?
 
 # With boolean mode
-! hashi -b --match-required *.txt
+! chexum -b --any-match *.txt
 ```
 
 ### Scripting Examples
@@ -80,12 +80,12 @@ exit_code=$?
 #### Verify Uniqueness
 ```bash
 # Before
-if hashi --no-match-required *.txt; then
+if chexum --no-match-required *.txt; then
     echo "All unique"
 fi
 
 # After
-if ! hashi --match-required *.txt; then
+if ! chexum --any-match *.txt; then
     echo "All unique"
 fi
 ```
@@ -93,13 +93,13 @@ fi
 #### Exit on Duplicates
 ```bash
 # Before
-hashi --no-match-required *.txt || {
+chexum --no-match-required *.txt || {
     echo "Duplicates found!"
     exit 1
 }
 
 # After
-hashi --match-required *.txt && {
+chexum --any-match *.txt && {
     echo "Duplicates found!"
     exit 1
 }
@@ -111,10 +111,10 @@ hashi --match-required *.txt && {
 Negation makes the logic explicit:
 ```bash
 # Clear: "if NOT (matches found)"
-! hashi --match-required *.txt
+! chexum --any-match *.txt
 
 # Was unclear: "if no-match-required"
-hashi --no-match-required *.txt
+chexum --no-match-required *.txt
 ```
 
 ### 2. Standard Unix Pattern
@@ -123,12 +123,12 @@ Using `!` for negation is a standard Unix pattern that all shell users understan
 ### 3. Simpler Mental Model
 Users only need to understand:
 - Default: check if all match
-- `--match-required`: check if any match
+- `--any-match`: check if any match
 - Negation: invert the result
 
 ### 4. Fewer Edge Cases
 No need to handle:
-- `--match-required` + `--no-match-required` conflicts
+- `--any-match` + `--no-match-required` conflicts
 - `-b --no-match-required` combinations
 - Documentation of two opposite flags
 

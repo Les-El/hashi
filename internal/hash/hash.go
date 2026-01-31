@@ -1,4 +1,4 @@
-// Package hash provides hash computation logic for hashi.
+// Package hash provides hash computation logic for chexum.
 //
 // DESIGN PRINCIPLE: Streaming over Buffering
 // ------------------------------------------
@@ -39,21 +39,30 @@ const (
 
 // Entry represents a hash computation result for a single file or input.
 type Entry struct {
-	Original  string    // Original argument (file path or hash string)
-	Hash      string    // Computed or provided hash value
-	IsFile    bool      // True if this entry represents a file
-	Error     error     // Processing error, if any
-	Size      int64     // File size in bytes
-	ModTime   time.Time // File modification time
-	Algorithm string    // Hash algorithm used
+	Original    string    // Original argument (file path or hash string)
+	Hash        string    // Computed or provided hash value
+	IsFile      bool      // True if this entry represents a file
+	IsReference bool      // True if this entry represents a user-provided reference hash
+	Error       error     // Processing error, if any
+	Size        int64     // File size in bytes
+	ModTime     time.Time // File modification time
+	Algorithm   string    // Hash algorithm used
 }
 
 // MatchGroup represents a group of entries with matching hashes.
-// This structure is key to Hashi's "Human-First" grouping logic.
+// This structure is key to Chexum's "Human-First" grouping logic.
 type MatchGroup struct {
 	Hash    string  // The common hash value
 	Entries []Entry // All entries with this hash
 	Count   int     // Number of entries in the group
+}
+
+// PoolMatch represents a match between a file and a provided hash string.
+type PoolMatch struct {
+	FilePath     string
+	ComputedHash string
+	ProvidedHash string
+	Algorithm    string
 }
 
 // Result holds the complete results of a hash processing operation.
@@ -61,6 +70,9 @@ type Result struct {
 	Entries        []Entry       // All processed entries
 	Matches        []MatchGroup  // Groups of matching hashes
 	Unmatched      []Entry       // Entries with unique hashes
+	PoolMatches    []PoolMatch   // Matches between files and provided hash strings
+	Unknowns       []string      // Invalid arguments identified as neither files nor hashes
+	RefOrphans     []Entry       // Reference hashes that didn't match any processed files
 	Errors         []error       // All errors encountered
 	Duration       time.Duration // Total processing time
 	FilesProcessed int           // Number of files processed
@@ -169,8 +181,10 @@ func (c *Computer) ComputeBytes(data []byte) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-// ComputeBatch processes a list of files in parallel using the specified number of workers.
-// It returns a channel that streams Entry results as they are completed.
+// ComputeBatch performs hashing of multiple files using a worker pool.
+// It returns a channel that will receive the results as they are computed.
+//
+// Reviewed: NESTED-LOOP - Standard worker pool pattern for concurrent processing.
 func (c *Computer) ComputeBatch(files []string, workers int) <-chan Entry {
 	if workers <= 0 {
 		workers = runtime.NumCPU()
@@ -224,7 +238,7 @@ func (c *Computer) Algorithm() string {
 // RATIONALE:
 // Since different hash algorithms produce digests of specific lengths
 // (e.g. MD5 is always 32 chars), we can guess the algorithm by its
-// representation. This enables Hashi's "Smart Detection" where users
+// representation. This enables Chexum's "Smart Detection" where users
 // don't have to specify --algo if the hash string is unambiguous.
 func DetectHashAlgorithm(hashStr string) []string {
 	// First validate that string contains only hex characters.

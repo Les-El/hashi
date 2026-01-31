@@ -54,3 +54,29 @@ func TestLoadConfigFile(t *testing.T) {
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestNewFileParser(t *testing.T) {
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	p := NewFileParser("config.toml", fs)
+	if p == nil {
+		t.Fatal("NewFileParser returned nil")
+	}
+}
+
+func TestFileParser_Parse(t *testing.T) {
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	defineFlags(fs, &Config{}) // define flags for ApplyConfigFile to find them
+
+	path := "test_parser.toml"
+	os.WriteFile(path, []byte("[defaults]\nrecursive = true"), 0644)
+	defer os.Remove(path)
+
+	p := NewFileParser(path, fs)
+	cfg := DefaultConfig()
+	if err := p.Parse(cfg); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if !cfg.Recursive {
+		t.Error("expected recursive=true")
+	}
+}

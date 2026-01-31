@@ -105,6 +105,16 @@ func TestWorkspace_WriteFile(t *testing.T) {
 	if string(read) != string(content) {
 		t.Errorf("expected %q, got %q", string(content), string(read))
 	}
+
+	t.Run("Nested", func(t *testing.T) {
+		if err := ws.WriteFile("a/b/c/test.txt", content); err != nil {
+			t.Fatalf("nested write failed: %v", err)
+		}
+		read, _ := ws.ReadFile("a/b/c/test.txt")
+		if string(read) != string(content) {
+			t.Errorf("expected %q, got %q", string(content), string(read))
+		}
+	})
 }
 
 func TestWorkspace_ReadFile(t *testing.T) {
@@ -117,6 +127,13 @@ func TestWorkspace_ReadFile(t *testing.T) {
 	if string(read) != "test" {
 		t.Errorf("expected test, got %s", string(read))
 	}
+
+	t.Run("Missing", func(t *testing.T) {
+		_, err := ws.ReadFile("missing.txt")
+		if err == nil {
+			t.Error("expected error for missing file")
+		}
+	})
 }
 
 func TestWorkspace_ErrorPaths(t *testing.T) {

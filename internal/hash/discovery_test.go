@@ -51,7 +51,7 @@ func TestDiscoverFiles(t *testing.T) {
 }
 
 func setupDiscoveryTestFiles(t *testing.T) string {
-	tmpDir, _ := os.MkdirTemp("", "hashi-discovery-*")
+	tmpDir, _ := os.MkdirTemp("", "chexum-discovery-*")
 	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("1"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, ".hidden_file"), []byte("h"), 0644)
 	os.Mkdir(filepath.Join(tmpDir, "sub"), 0755)

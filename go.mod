@@ -1,4 +1,4 @@
-module github.com/Les-El/hashi
+module github.com/Les-El/chexum
 
 go 1.24.0
 

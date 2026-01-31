@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 func TestCLI_Help(t *testing.T) {
@@ -19,7 +19,7 @@ func TestCLI_Help(t *testing.T) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("hashi --help failed: %v\nStderr: %s", err, stderr.String())
+		t.Fatalf("chexum --help failed: %v\nStderr: %s", err, stderr.String())
 	}
 
 	output := stdout.String()
@@ -34,12 +34,12 @@ func TestCLI_Version(t *testing.T) {
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("hashi --version failed: %v", err)
+		t.Fatalf("chexum --version failed: %v", err)
 	}
 
 	output := stdout.String()
-	if !strings.Contains(output, "hashi version") {
-		t.Errorf("expected version output to contain 'hashi version', got: %s", output)
+	if !strings.Contains(output, "chexum version") {
+		t.Errorf("expected version output to contain 'chexum version', got: %s", output)
 	}
 }
 
@@ -55,7 +55,7 @@ func TestCLI_HashFile(t *testing.T) {
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("hashi %s failed: %v", filePath, err)
+		t.Fatalf("chexum %s failed: %v", filePath, err)
 	}
 
 	output := stdout.String()
@@ -76,7 +76,7 @@ func TestCLI_JSONOutput(t *testing.T) {
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("hashi --json failed: %v", err)
+		t.Fatalf("chexum --json failed: %v", err)
 	}
 
 	var res struct {
@@ -108,7 +108,7 @@ func TestCLI_Recursive(t *testing.T) {
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("hashi -r failed: %v", err)
+		t.Fatalf("chexum -r failed: %v", err)
 	}
 
 	if !strings.Contains(stdout.String(), "f1.txt") {
@@ -127,7 +127,7 @@ func TestCLI_Algorithm(t *testing.T) {
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("hashi -a md5 failed: %v", err)
+		t.Fatalf("chexum -a md5 failed: %v", err)
 	}
 
 	// MD5 of "hello" is 5d41402abc4b2a76b9719d911017c592

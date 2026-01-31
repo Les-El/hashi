@@ -17,8 +17,20 @@ func DefaultConfig() *Config {
 	cfg.Processing.Jobs = 0
 	cfg.Output.Format = "default"
 
+	// Discovery defaults
+	cfg.Discovery.InternalPath = "internal"
+	cfg.Discovery.MainEntry = "cmd/chexum/main.go"
+	cfg.Discovery.DocsPath = "docs"
+
 	return cfg
 }
 
-var ValidOutputFormats = []string{"default", "verbose", "json", "jsonl", "plain"}
+var ValidOutputFormats = []string{
+	"default",
+	"verbose",
+	"json",
+	"jsonl",
+	"plain",
+	"csv",
+}
 var ValidAlgorithms = []string{"sha256", "md5", "sha1", "sha512", "blake2b"}

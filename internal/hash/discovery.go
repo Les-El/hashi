@@ -93,7 +93,7 @@ func handlePath(path, root string, info os.FileInfo, opts DiscoveryOptions, disc
 	}
 
 	// 2b. Resource Hardening: Only process regular files.
-	// This prevents hashi from hanging on /dev/zero, pipes, or other
+	// This prevents chexum from hanging on /dev/zero, pipes, or other
 	// "infinite" or blocking sources which could be used for DoS.
 	if !info.Mode().IsRegular() {
 		return nil

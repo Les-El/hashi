@@ -1,10 +1,10 @@
 # Previewing Operations with Dry Run
 
-hashi allows you to preview which files will be processed before you start any expensive hashing operations. This is especially useful when testing complex filters.
+chexum allows you to preview which files will be processed before you start any expensive hashing operations. This is especially useful when testing complex filters.
 
 ## Using Dry Run (`--dry-run`)
 
-When you use the `--dry-run` flag, hashi will:
+When you use the `--dry-run` flag, chexum will:
 1. Discover files based on your arguments and recursion settings.
 2. Apply any active filters (`--include`, `--min-size`, etc.).
 3. Display a list of files that passed the filters.
@@ -12,7 +12,7 @@ When you use the `--dry-run` flag, hashi will:
 
 ```bash
 # Preview hashing all .go files recursively
-hashi -r --include "*.go" --dry-run
+chexum -r --include "*.go" --dry-run
 ```
 
 ## Example Output
@@ -20,7 +20,7 @@ hashi -r --include "*.go" --dry-run
 ```text
 Dry Run: Previewing files that would be processed
 
-cmd/hashi/main.go    (estimated size: 12.5 KB)
+cmd/chexum/main.go    (estimated size: 12.5 KB)
 internal/hash/hash.go    (estimated size: 4.2 KB)
 internal/config/config.go    (estimated size: 22.1 KB)
 

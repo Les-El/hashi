@@ -1,10 +1,10 @@
 # Flag Conflict Documentation
 
-This document catalogs known flag interactions, conflicts, and resolution strategies for the `hashi` project.
+This document catalogs known flag interactions, conflicts, and resolution strategies for the `chexum` project.
 
 ## Conflict Resolution Philosophy: Pipeline of Intent
 
-Hashi uses a three-phase resolution system to avoid "Matrix Hell":
+Chexum uses a three-phase resolution system to avoid "Matrix Hell":
 1. **Mode Detection**: (Standard, Boolean, Validation, Comparison)
 2. **Format Resolution**: (Default, JSON, JSONL, Plain, Verbose)
 3. **Verbosity Filtering**: (Quiet, Normal, Verbose)
@@ -40,6 +40,6 @@ The test `internal/conflict/property_test.go` uses Property-Based Testing to ens
 ### Fuzzing Strategy (Moonshot)
 We use a custom fuzzer to:
 1. Generate random command strings.
-2. Execute the `hashi` binary.
+2. Execute the `chexum` binary.
 3. Verify that the exit code and output format match the "Last One Wins" expectation.
 4. Ensure no combination of flags results in a panic or crash.

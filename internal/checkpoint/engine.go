@@ -75,53 +75,52 @@ type AnalysisEngine interface {
 	Analyze(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
 }
 
-// CodebaseAnalyzer examines Go source code.
-type CodebaseAnalyzer interface {
-	AnalysisEngine
-	AnalyzePackages(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	CheckSecurity(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	AssessDependencies(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	IdentifyTechnicalDebt(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
+// AnalysisTask represents a single unit of analysis that can be executed by an engine.
+type AnalysisTask func(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
+
+// BaseEngine provides common functionality for engines that run a series of tasks.
+type BaseEngine struct {
+	name  string
+	tasks []AnalysisTask
 }
 
-// DocumentationAuditor validates project documentation.
-type DocumentationAuditor interface {
-	AnalysisEngine
-	AuditGoDocumentation(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	ValidateREADME(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	CheckArchitecturalDocs(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	VerifyExamples(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
+// Name returns the engine name.
+func (e *BaseEngine) Name() string { return e.name }
+
+// RegisterTask adds a new task to the engine.
+func (e *BaseEngine) RegisterTask(task AnalysisTask) {
+	e.tasks = append(e.tasks, task)
 }
 
-// TestingBatteryManager manages the testing suite.
-type TestingBatteryManager interface {
-	AnalysisEngine
-	CreateUnitTests(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	BuildIntegrationTests(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	ImplementPropertyTests(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	CreateBenchmarks(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	CheckTestReliability(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	IdentifyLowCoverage(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
+// Analyze executes all registered tasks.
+func (e *BaseEngine) Analyze(ctx context.Context, path string, ws *Workspace) ([]Issue, error) {
+	var allIssues []Issue
+	for _, task := range e.tasks {
+		issues, err := task(ctx, path, ws)
+		if err != nil {
+			allIssues = append(allIssues, Issue{
+				ID:          "ENGINE-TASK-FAILURE",
+				Category:    CodeQuality,
+				Severity:    Medium,
+				Title:       fmt.Sprintf("Task failed in %s", e.name),
+				Description: err.Error(),
+				Location:    path,
+				Suggestion:  "Check logs and environment settings.",
+				Priority:    P2,
+			})
+			continue
+		}
+		allIssues = append(allIssues, issues...)
+	}
+	return allIssues, nil
 }
 
-// FlagDocumentationSystem catalogs and documents CLI flags.
-type FlagDocumentationSystem interface {
-	AnalysisEngine
-	CatalogFlags(ctx context.Context, path string, ws *Workspace) ([]FlagStatus, error)
-	ClassifyImplementation(ctx context.Context, path string, ws *Workspace, flags []FlagStatus) ([]FlagStatus, error)
-	PerformCrossReferenceAnalysis(ctx context.Context, path string, ws *Workspace, flags []FlagStatus) ([]FlagStatus, error)
-	DetectConflicts(ctx context.Context, ws *Workspace, flags []FlagStatus) ([]FlagStatus, error)
-	ValidateFunctionality(ctx context.Context, ws *Workspace, flags []FlagStatus) ([]FlagStatus, error)
-	GenerateStatusReport(ctx context.Context, ws *Workspace, flags []FlagStatus) (string, error)
-}
-
-// QualityAssessmentEngine evaluates code quality and standards.
-type QualityAssessmentEngine interface {
-	AnalysisEngine
-	CheckGoStandards(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	AssessCLIDesign(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	EvaluateErrorHandling(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
-	AnalyzePerformance(ctx context.Context, path string, ws *Workspace) ([]Issue, error)
+// NewBaseEngine creates a new BaseEngine instance.
+func NewBaseEngine(name string) *BaseEngine {
+	return &BaseEngine{
+		name:  name,
+		tasks: make([]AnalysisTask, 0),
+	}
 }
 
 // SynthesisEngine aggregates findings into actionable reports.

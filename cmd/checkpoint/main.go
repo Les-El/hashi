@@ -6,13 +6,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Les-El/hashi/internal/checkpoint"
+	"github.com/Les-El/chexum/internal/checkpoint"
+)
+
+var (
+	osExit = os.Exit
 )
 
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		osExit(1)
 	}
 }
 
@@ -22,11 +26,11 @@ func run() error {
 	fmt.Println("Starting Major Checkpoint Analysis...")
 
 	cleanup := checkpoint.NewCleanupManager(true)
-	checkInitialResources(cleanup)
+	checkInitialResources(cleanup, 75.0)
 
 	engines := registerEngines()
 
-	issues, flags, err := runAnalysis(ctx, engines, cleanup)
+	issues, flags, err := runAnalysis(ctx, engines, cleanup, ".")
 	if err != nil {
 		handleRunFailure(cleanup, "analysis", err)
 		return fmt.Errorf("running analysis: %w", err)
@@ -46,7 +50,7 @@ func run() error {
 	fmt.Println("Analysis complete. Reports generated in major_checkpoint/ directory.")
 
 	// Perform cleanup at the end
-	if os.Getenv("HASHI_SKIP_CLEANUP") == "" {
+	if os.Getenv("CHEXUM_SKIP_CLEANUP") == "" {
 		fmt.Println("Performing post-analysis cleanup...")
 		if err := cleanup.CleanupOnExit(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Cleanup failed: %v\n", err)
@@ -55,9 +59,9 @@ func run() error {
 	return nil
 }
 
-func checkInitialResources(cleanup *checkpoint.CleanupManager) {
+func checkInitialResources(cleanup *checkpoint.CleanupManager, threshold float64) {
 	// Check storage usage before starting
-	if needsCleanup, usage := cleanup.CheckStorageUsage(75.0); needsCleanup {
+	if needsCleanup, usage := cleanup.CheckStorageUsage(threshold); needsCleanup {
 		fmt.Printf("Warning: Storage usage is %.1f%%. Consider running cleanup before analysis.\n", usage)
 	}
 }
@@ -67,9 +71,9 @@ func registerEngines() []checkpoint.AnalysisEngine {
 		checkpoint.NewCodeAnalyzer(),
 		checkpoint.NewDependencyAnalyzer(),
 		checkpoint.NewDocAuditor(),
-		checkpoint.NewTestingBattery(),
+		checkpoint.NewTestValidationEngine(85.0), // Consolidated testing
+		checkpoint.NewStaticAnalysisEngine(),     // Consolidated quality and missing tests
 		checkpoint.NewFlagSystem(),
-		checkpoint.NewQualityEngine(),
 		checkpoint.NewCIEngine(85.0),
 	}
 }
@@ -81,11 +85,11 @@ func handleRunFailure(cleanup *checkpoint.CleanupManager, phase string, err erro
 	}
 }
 
-func runAnalysis(ctx context.Context, engines []checkpoint.AnalysisEngine, cleanup *checkpoint.CleanupManager) ([]checkpoint.Issue, []checkpoint.FlagStatus, error) {
-	runner := checkpoint.NewRunner(engines)
+func runAnalysis(ctx context.Context, engines []checkpoint.AnalysisEngine, cleanup *checkpoint.CleanupManager, rootPath string) ([]checkpoint.Issue, []checkpoint.FlagStatus, error) {
+	runner := checkpoint.NewRunner(engines, cleanup)
 
 	fmt.Println("Running comprehensive project analysis...")
-	if err := runner.Run(ctx, "."); err != nil {
+	if err := runner.Run(ctx, rootPath); err != nil {
 		return nil, nil, err
 	}
 
@@ -100,15 +104,15 @@ func runAnalysis(ctx context.Context, engines []checkpoint.AnalysisEngine, clean
 	defer ws.Cleanup()
 
 	flagSystem := checkpoint.NewFlagSystem()
-	flags, err := flagSystem.CatalogFlags(ctx, ".", ws)
+	flags, err := flagSystem.CatalogFlags(ctx, rootPath, ws)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cataloging flags: %w", err)
 	}
 
-	if flags, err = flagSystem.ClassifyImplementation(ctx, ".", ws, flags); err != nil {
+	if flags, err = flagSystem.ClassifyImplementation(ctx, rootPath, ws, flags); err != nil {
 		return nil, nil, fmt.Errorf("classifying flags: %w", err)
 	}
-	if flags, err = flagSystem.PerformCrossReferenceAnalysis(ctx, ".", ws, flags); err != nil {
+	if flags, err = flagSystem.PerformCrossReferenceAnalysis(ctx, rootPath, ws, flags); err != nil {
 		return nil, nil, fmt.Errorf("cross-referencing flags: %w", err)
 	}
 	if flags, err = flagSystem.DetectConflicts(ctx, ws, flags); err != nil {

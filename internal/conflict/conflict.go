@@ -36,6 +36,7 @@ const (
 	FormatJSON    Format = "json"    // --json or --format=json
 	FormatJSONL   Format = "jsonl"   // --jsonl or --format=jsonl
 	FormatPlain   Format = "plain"   // --plain or --format=plain
+	FormatCSV     Format = "csv"     // --csv or --format=csv
 	FormatVerbose Format = "verbose" // --format=verbose
 )
 

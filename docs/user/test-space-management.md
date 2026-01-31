@@ -1,112 +1,73 @@
-# Test Space Management
+# Resource and Space Management
 
 ## Problem
 
-During test execution, particularly with Go's testing infrastructure, accumulated temporary files in the system temporary directory can cause disk space exhaustion. This manifests as errors like:
-- `open .../go-build*/file: no such file or directory`
-- Build failures due to insufficient temporary storage space
+Hashing operations and extensive test suites can stress system resources:
+- **Disk Space**: Accumulated temporary files in `/tmp` (or `%TEMP%`) can cause disk exhaustion.
+- **Memory**: Hashing multi-gigabyte files can lead to Out-of-Memory (OOM) errors if the tool attempts to buffer the entire file.
 
-## Solution
+## Solutions
 
-The hashi project includes automated cleanup mechanisms to address this:
+The chexum project implements several layers of resource management:
 
-### 1. Automatic Cleanup After Tests
+### 1. Memory Management (Streaming)
 
-Each test package (cmd/hashi, cmd/checkpoint, cmd/cleanup, internal/checkpoint) includes a `TestMain()` function that automatically removes test-created temporary files after tests complete:
+Chexum follows a **Streaming over Buffering** design principle. It uses `io.Copy` to pipe data directly from file handles into cryptographic hashers. 
+- **Constant Footprint**: Memory usage remains small and stable (typically < 50MB) regardless of whether you are hashing a 1KB text file or a 100GB disk image.
+- **Zero Buffering**: Files are never loaded into RAM in their entirety.
+
+### 2. Automatic Runtime Cleanup
+
+The `chexum` tool manages its own temporary artifacts:
+- **Proactive Checks**: Before starting, chexum checks storage usage. If the partition hosting `/tmp` is > 85% full, it automatically triggers a cleanup of its own stale temporary files.
+- **Graceful Exit**: On completion (or cancellation via Ctrl+C), chexum automatically removes its active workspace and temporary files.
+
+### 3. Automated Cleanup in Tests
+
+Each test package (`cmd/chexum`, `cmd/checkpoint`, `cmd/cleanup`, `internal/checkpoint`) includes logic to remove test-created artifacts after completion. 
+
+### 4. Standalone Cleanup Tool
+
+For manual management or CI/CD pipelines, use the `cleanup` utility:
 
 ```bash
-go test ./cmd/...
-# Automatically removes temporary project artifacts after completion
+./cleanup --dry-run          # Preview cleanup
+./cleanup --force            # Force cleanup even if storage is healthy
+./cleanup --threshold 70     # Set a custom usage threshold for cleanup
 ```
 
-### 2. Pre-Test Cleanup Script
+### 5. Pre-Test Cleanup Script
 
-For CI/CD pipelines or before running extensive test suites, use the cleanup script:
+Before running extensive test suites, you can use the provided shell script:
 
 ```bash
 bash scripts/cleanup-before-tests.sh
 go test ./...
 ```
 
-### 3. CleanupManager Integration
-
-The [CleanupManager](../internal/checkpoint/cleanup.go) is available for manual use:
-
-```go
-import "github.com/Les-El/hashi/internal/checkpoint"
-
-cm := checkpoint.NewCleanupManager(false)
-result, err := cm.CleanupTemporaryFiles()
-```
-
-Or from the command line:
-
-```bash
-./checkpoint cleanup --dry-run          # Preview cleanup
-./checkpoint cleanup --force             # Force cleanup immediately
-```
-
-### 4. Configuration
-
-Cleanup behavior can be customized via:
-- Environment variables
-- Configuration files (see [Cleanup Config](../internal/checkpoint/cleanup.go#L15-L30))
-- Command-line flags (see [cmd/cleanup/main.go](../cmd/cleanup/main.go))
-
 ## Best Practices
 
-1. **Before Large Test Runs**: Always run the pre-test cleanup script
-   ```bash
-   bash scripts/cleanup-before-tests.sh && go test ./...
-   ```
-
-2. **In CI/CD**: Add cleanup to your pipeline before test execution:
+1. **In CI/CD**: Add cleanup to your pipeline before test execution:
    ```yaml
    - name: Clean tmp before tests
      run: bash scripts/cleanup-before-tests.sh
    ```
 
-3. **Monitoring**: Check /tmp usage with:
+2. **Monitoring**: Check /tmp usage with:
    ```bash
    df -h /tmp
-   du -sh /tmp  # Requires elevated privileges for some dirs
+   du -sh /tmp
    ```
 
-4. **Safe Patterns**: The cleanup system only removes patterns known to be safe:
+3. **Safe Patterns**: The cleanup system only removes patterns known to be safe:
    - `/tmp/go-build*` - Go compiler artifacts
-   - `/tmp/hashi-*` - Project-specific temp files
+   - `/tmp/chexum-*` - Project-specific temp files
    - `/tmp/checkpoint-*` - Checkpoint artifacts
    - `/tmp/test-*` - Test temporary files
-
-Never remove the root `/tmp` or system temporary directories!
-
-## Troubleshooting
-
-If tests still fail with disk space errors after running cleanup:
-
-1. Check available disk space:
-   ```bash
-   df -h /tmp
-   ```
-
-2. Manually clean aggressive patterns:
-   ```bash
-   rm -rf /tmp/go-build* /tmp/hashi-* /tmp/checkpoint-* /tmp/test-*
-   ```
-
-3. Check for other processes using /tmp:
-   ```bash
-   lsof /tmp | head -20
-   ```
-
-4. Consider using a different temporary directory with more space:
-   ```bash
-   export TMPDIR=/path/to/larger/storage
-   go test ./...
-   ```
+   - `/tmp/*.tmp` - Generic temporary files
 
 ## See Also
 
 - [CleanupManager API Documentation](../internal/checkpoint/cleanup.go)
-- [Cleanup Command](../cmd/cleanup/main.go)
-- [Requirements Document - Requirement 3](./requirements.md#requirement-3-cleanup-manager-enhancement)
+- [Cleanup Tool Source](../cmd/cleanup/main.go)
+- [Performance Guidelines](./performance.md)

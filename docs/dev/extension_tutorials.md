@@ -1,4 +1,4 @@
-# Hashi2 Extension Tutorials
+# Chexum Extension Tutorials
 
 ## Adding a New Hashing Algorithm
 
@@ -22,5 +22,5 @@ To add a new flag (e.g., `--follow-symlinks`):
 3.  **Default Value**: If needed, set a default value in `DefaultConfig()` in `internal/config/defaults.go`.
 4.  **Environmental Mapping**: Add a corresponding field to `EnvConfig` in `internal/config/types.go` and update `LoadEnvConfig` and `ApplyEnvConfig` in `internal/config/env.go`.
 5.  **Config File Mapping**: Add a field to `ConfigFile` struct in `internal/config/file.go` and update `ApplyConfigFile`.
-6.  **Implementation**: Use the new field in `cmd/hashi/main.go` or other relevant packages.
+6.  **Implementation**: Use the new field in `cmd/chexum/main.go` or other relevant packages.
 7.  **Documentation**: Update `docs/user/command-reference.md`.

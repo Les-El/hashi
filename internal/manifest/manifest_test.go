@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/hash"
 )
 
 func TestNew(t *testing.T) {

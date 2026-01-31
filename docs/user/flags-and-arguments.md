@@ -1,20 +1,20 @@
-# hashi Flags and Arguments
+# chexum Flags and Arguments
 
-This document provides a concise reference for all command-line flags and positional arguments supported by `hashi`.
+This document provides a concise reference for all command-line flags and positional arguments supported by `chexum`.
 
 ## Usage Syntax
 
 ```bash
-hashi [flags] [files or hashes...]
+chexum [flags] [files or hashes...]
 ```
 
 ## Positional Arguments
 
-`hashi` smartly differentiates between file paths and hash strings provided as positional arguments:
+`chexum` smartly differentiates between file paths and hash strings provided as positional arguments:
 
 - **Files/Directories**: Any argument that exists on the filesystem as a file or directory.
 - **Hashes**: Any argument that looks like a cryptographic hash (hexadecimal characters of specific lengths: 32, 40, 64, or 128 characters).
-- **Stdin Marker (`-`)**: A special argument that tells `hashi` to read file paths from standard input.
+- **Stdin Marker (`-`)**: A special argument that tells `chexum` to read file paths from standard input.
 
 ## Command-Line Flags
 
@@ -23,7 +23,7 @@ hashi [flags] [files or hashes...]
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--recursive` | `-r` | `false` | Process directories recursively |
-| `--hidden` | | `false` | Include hidden files (starting with `.`) |
+| `--hidden` | `-H` | `false` | Include hidden files (starting with `.`) |
 | `--algorithm` | `-a` | `sha256` | Hash algorithm to use (`sha256`, `sha512`, `md5`, `sha1`, `blake2b`) |
 | `--jobs` | `-j` | `0` (Auto) | Number of parallel hashing jobs to run |
 | `--dry-run` | | `false` | Preview files and estimate time without hashing |
@@ -44,10 +44,11 @@ hashi [flags] [files or hashes...]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--format` | `-f` | `default` | Output format (`default`, `json`, `jsonl`, `plain`, `verbose`) |
+| `--format` | `-f` | `default` | Output format (`default`, `json`, `jsonl`, `plain`, `verbose`, `csv`) |
 | `--json` | | | Shortcut for `--format json` |
 | `--jsonl` | | | Shortcut for `--format jsonl` |
 | `--plain` | | | Shortcut for `--format plain` |
+| `--csv` | | | Shortcut for `--format csv` |
 | `--quiet` | `-q` | `false` | Suppress non-essential output (like progress bars) |
 | `--verbose`| `-v` | `false` | Show detailed debug information and errors |
 | `--bool` | `-b` | `false` | Only output `true` or `false` (identical mode) |
@@ -68,18 +69,19 @@ hashi [flags] [files or hashes...]
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--preserve-order` | | Maintain strict input/alphabetical order in output |
-| `--match-required` | | Exit with 0 only if at least one match was found |
+| `--any-match` | | Exit with 0 if at least one match was found |
+| `--all-match` | | Exit with 0 only if all files match |
 | `--test` | | Run project diagnostics (internal testing) |
 | `--help` | `-h` | Show this help message |
 | `--version` | `-V` | Show application version |
 
 ## Environment Variables
 
-The following environment variables can also be used to configure `hashi`:
+The following environment variables can also be used to configure `chexum`:
 
-- `HASHI_ALGORITHM`: Sets the default algorithm (overridden by `-a`)
-- `HASHI_FORMAT`: Sets the default output format (overridden by `-f`)
-- `HASHI_QUIET`: If `true`, enables quiet mode
-- `HASHI_VERBOSE`: If `true`, enables verbose mode
-- `HASHI_JOBS`: Sets the default number of workers
-- `HASHI_SKIP_CLEANUP`: If set, prevents periodic cleanup of temp repositories
+- `CHEXUM_ALGORITHM`: Sets the default algorithm (overridden by `-a`)
+- `CHEXUM_FORMAT`: Sets the default output format (overridden by `-f`)
+- `CHEXUM_QUIET`: If `true`, enables quiet mode
+- `CHEXUM_VERBOSE`: If `true`, enables verbose mode
+- `CHEXUM_JOBS`: Sets the default number of workers
+- `CHEXUM_SKIP_CLEANUP`: If set, prevents periodic cleanup of temp repositories

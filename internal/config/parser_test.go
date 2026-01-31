@@ -25,6 +25,8 @@ func TestMultiParser(t *testing.T) {
 	}
 }
 
+func TestParse(t *testing.T) { TestMultiParser(t) }
+
 type mockParser struct {
 	val string
 }
@@ -37,7 +39,7 @@ func (m *mockParser) Parse(cfg *Config) error {
 func TestCLIParser(t *testing.T) {
 	cfg := DefaultConfig()
 	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
-	args := []string{"--algorithm", "md5", "file.txt"}
+	args := []string{"--algorithm", "md5", "cli.go"}
 
 	parser := NewCLIParser(args, fs)
 	if err := parser.Parse(cfg); err != nil {
@@ -48,8 +50,8 @@ func TestCLIParser(t *testing.T) {
 		t.Errorf("expected algorithm md5, got %s", cfg.Algorithm)
 	}
 
-	if len(cfg.Files) != 1 || cfg.Files[0] != "file.txt" {
-		t.Errorf("expected files [file.txt], got %v", cfg.Files)
+	if len(cfg.Files) != 1 || cfg.Files[0] != "cli.go" {
+		t.Errorf("expected files [cli.go], got %v", cfg.Files)
 	}
 }
 
@@ -57,7 +59,7 @@ func TestEnvParser(t *testing.T) {
 	cfg := DefaultConfig()
 	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
 	extra := map[string]string{
-		"HASHI_ALGORITHM": "sha1",
+		"CHEXUM_ALGORITHM": "sha1",
 	}
 
 	parser := NewEnvParser(extra, fs)

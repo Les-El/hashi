@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 // Property 2: Coverage Threshold Maintenance
@@ -45,9 +45,9 @@ func TestProperty_CICoverageMonitoring(t *testing.T) {
 
 func TestCoverageMonitor_ParseOutput(t *testing.T) {
 	output := `
-ok  	github.com/Les-El/hashi/internal/config	0.015s	coverage: 87.5% of statements
-ok  	github.com/Les-El/hashi/internal/hash	0.020s	coverage: 92.0% of statements
-ok  	github.com/Les-El/hashi/internal/errors	0.005s	coverage: 45.0% of statements
+ok  	github.com/Les-El/chexum/internal/config	0.015s	coverage: 87.5% of statements
+ok  	github.com/Les-El/chexum/internal/hash	0.020s	coverage: 92.0% of statements
+ok  	github.com/Les-El/chexum/internal/errors	0.005s	coverage: 45.0% of statements
 `
 	monitor := NewCoverageMonitor(85.0)
 	coverage, err := monitor.ParseCoverageOutput(output)
@@ -55,8 +55,8 @@ ok  	github.com/Les-El/hashi/internal/errors	0.005s	coverage: 45.0% of statement
 		t.Fatalf("ParseCoverageOutput failed: %v", err)
 	}
 
-	if coverage["github.com/Les-El/hashi/internal/config"] != 87.5 {
-		t.Errorf("Expected 87.5%%, got %.1f%%", coverage["github.com/Les-El/hashi/internal/config"])
+	if coverage["github.com/Les-El/chexum/internal/config"] != 87.5 {
+		t.Errorf("Expected 87.5%%, got %.1f%%", coverage["github.com/Les-El/chexum/internal/config"])
 	}
 
 	failures, ok := monitor.ValidateThreshold(coverage)

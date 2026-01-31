@@ -1,15 +1,15 @@
-// Package security provides input validation and path safety checks for hashi.
+// Package security provides input validation and path safety checks for chexum.
 //
-// DESIGN PRINCIPLE: Hashi can't change Hashi
+// DESIGN PRINCIPLE: Chexum can't change Chexum
 // -----------------------------------------
 // One of the most dangerous vulnerabilities in automated tools is
 // "Self-Modification" or "Configuration Injection". If an attacker can force
 // a tool to overwrite its own security policy, the tool becomes a weapon.
 //
-// Hashi defends against this with two core mandates:
-//  1. READ-ONLY ON SOURCE: Hashi never, under any circumstances, modifies the
+// Chexum defends against this with two core mandates:
+//  1. READ-ONLY ON SOURCE: Chexum never, under any circumstances, modifies the
 //     files it is hashing.
-//  2. PROTECTED CONFIGURATION: Hashi cannot write output or logs to its own
+//  2. PROTECTED CONFIGURATION: Chexum cannot write output or logs to its own
 //     configuration files or directories.
 //
 // This package implements these mandates through strict path validation,
@@ -36,7 +36,7 @@ type Options struct {
 // Default blacklists
 var DefaultBlacklistFiles = []string{
 	".env",
-	".hashi.toml",
+	".chexum.toml",
 	"*.key",
 	"*.pem",
 	"id_rsa",
@@ -47,7 +47,7 @@ var DefaultBlacklistDirs = []string{
 	".git",
 	".ssh",
 	".aws",
-	".config/hashi",
+	".config/chexum",
 }
 
 // ValidateOutputPath ensures an output path is safe to write to.
@@ -56,57 +56,54 @@ func ValidateOutputPath(path string, opts Options) error {
 		return nil
 	}
 
-	// 1. Extension validation
-	ext := strings.ToLower(filepath.Ext(path))
-	allowedExts := []string{".txt", ".json", ".csv"}
-	extAllowed := false
-	for _, allowed := range allowedExts {
-		if ext == allowed {
-			extAllowed = true
-			break
-		}
-	}
-	if !extAllowed {
-		return fmt.Errorf("output files must have extension: %s (got %s)",
-			strings.Join(allowedExts, ", "), ext)
-	}
-
-	// 2. Directory traversal check
-	// We use Clean to resolve ".." and checks if it tries to escape boundaries
-	// strictly speaking, we just want to ensure we aren't being tricked.
-	// Simple string check is too aggressive (blocks "file..txt").
-	cleaned := filepath.Clean(path)
-	// If the path is relative and starts with "..", it's traversing up.
-	// But Clean("foo/../../bar") -> "../bar".
-	if strings.Contains(filepath.ToSlash(cleaned), "../") || filepath.Base(cleaned) == ".." {
-		return fmt.Errorf("directory traversal not allowed in output path")
-	}
-	// We also keep the original check for safety but strictly for path separators involved
-	// actually, let's remove the naive check and trust Clean + analysis.
-
-	// 3. File name validation
-	basename := filepath.Base(path)
-	if err := ValidateFileName(basename, opts); err != nil {
+	if err := checkExtension(path); err != nil {
 		return err
 	}
 
-	// 4. Directory validation
+	if err := checkTraversal(path); err != nil {
+		return err
+	}
+
+	if err := ValidateFileName(filepath.Base(path), opts); err != nil {
+		return err
+	}
+
 	if err := ValidateDirPath(path, opts); err != nil {
 		return err
 	}
 
-	// 5. Symlink check
-	// We must ensure that if the file exists, it is not a symlink.
+	return checkFileStatus(path, opts)
+}
+
+func checkExtension(path string) error {
+	ext := strings.ToLower(filepath.Ext(path))
+	allowedExts := []string{".txt", ".json", ".jsonl", ".csv", ".log"}
+	for _, allowed := range allowedExts {
+		if ext == allowed {
+			return nil
+		}
+	}
+	return fmt.Errorf("output files must have extension: %s (got %s)",
+		strings.Join(allowedExts, ", "), ext)
+}
+
+func checkTraversal(path string) error {
+	cleaned := filepath.Clean(path)
+	if strings.Contains(filepath.ToSlash(cleaned), "../") || filepath.Base(cleaned) == ".." {
+		return fmt.Errorf("directory traversal not allowed in output path")
+	}
+	return nil
+}
+
+func checkFileStatus(path string, opts Options) error {
 	info, err := os.Lstat(path)
 	if err == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return formatSecurityError(opts.Verbose, "cannot write to symlink")
 		}
 	} else if !os.IsNotExist(err) {
-		// If we can't check it, fail safe
 		return fmt.Errorf("failed to check file status: %w", err)
 	}
-
 	return nil
 }
 
@@ -149,25 +146,51 @@ func ValidateFileName(filename string, opts Options) error {
 }
 
 // ValidateDirPath checks if any part of the path matches blacklisted directory names.
+func (opts Options) isWhitelistedDir(part string) bool {
+	partLower := strings.ToLower(part)
+	for _, white := range opts.WhitelistDirs {
+		whiteLower := strings.ToLower(white)
+		if wMatched, _ := filepath.Match(whiteLower, partLower); wMatched {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateDirPath checks if any part of the path matches blacklisted directory names.
 func ValidateDirPath(path string, opts Options) error {
 	if path == "" {
 		return nil
 	}
 
-	// 1. General directory traversal check for ALL paths
-	// Replaced naive strings.Contains checks with strictly cleaned path inspection
+	if err := checkGeneralTraversal(path, opts.Verbose); err != nil {
+		return err
+	}
+
+	if err := checkConfigProtection(path, opts.Verbose); err != nil {
+		return err
+	}
+
+	return checkBlacklistedDirs(path, opts)
+}
+
+func checkGeneralTraversal(path string, verbose bool) error {
 	cleaned := filepath.Clean(path)
-	// If the path is relative and starts with "..", it's traversing up.
 	if strings.Contains(filepath.ToSlash(cleaned), "../") || filepath.Base(cleaned) == ".." {
-		return formatSecurityError(opts.Verbose, "directory traversal not allowed in paths")
+		return formatSecurityError(verbose, "directory traversal not allowed in paths")
 	}
+	return nil
+}
 
-	// 2. Explicit protection for hashi configuration
+func checkConfigProtection(path string, verbose bool) error {
 	pathLower := strings.ToLower(path)
-	if strings.Contains(pathLower, ".hashi") || strings.Contains(pathLower, ".config/hashi") {
-		return formatSecurityError(opts.Verbose, "cannot write to configuration directory")
+	if strings.Contains(pathLower, ".chexum") || strings.Contains(pathLower, ".config/chexum") {
+		return formatSecurityError(verbose, "cannot write to configuration directory")
 	}
+	return nil
+}
 
+func checkBlacklistedDirs(path string, opts Options) error {
 	allBlacklist := append(DefaultBlacklistDirs, opts.BlacklistDirs...)
 	dir := filepath.Dir(path)
 	if dir == "." || dir == "/" {
@@ -179,6 +202,10 @@ func ValidateDirPath(path string, opts Options) error {
 		if part == "" || part == "." || part == ".." {
 			continue
 		}
+		if opts.isWhitelistedDir(part) {
+			continue
+		}
+
 		partLower := strings.ToLower(part)
 		for _, pattern := range allBlacklist {
 			patternLower := strings.ToLower(pattern)
@@ -188,17 +215,9 @@ func ValidateDirPath(path string, opts Options) error {
 			}
 
 			if matched {
-				// Check whitelist
-				for _, white := range opts.WhitelistDirs {
-					whiteLower := strings.ToLower(white)
-					if wMatched, _ := filepath.Match(whiteLower, partLower); wMatched {
-						goto nextPart
-					}
-				}
 				return formatSecurityError(opts.Verbose, fmt.Sprintf("cannot access directory matching security pattern: %s", pattern))
 			}
 		}
-	nextPart:
 	}
 	return nil
 }
@@ -246,6 +265,24 @@ func ResolveSafePath(path string) (string, error) {
 		return "", fmt.Errorf("failed to resolve path: %w", err)
 	}
 	return abs, nil
+}
+
+// SanitizeOutput neutralizes non-printable characters and terminal escape sequences.
+// This prevents "Terminal Escape Injection" where a malicious filename could
+// execute commands or hide output in a user's terminal emulator.
+func SanitizeOutput(s string) string {
+	var sb strings.Builder
+	for _, r := range s {
+		// Replace control characters (0-31 and 127) with a placeholder
+		// We allow common whitespace like space, but block \r, \n, \t in names
+		// to prevent multi-line spoofing or alignment tricks.
+		if r < 32 || r == 127 {
+			sb.WriteRune('?')
+		} else {
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String()
 }
 
 func formatSecurityError(verbose bool, details string) error {

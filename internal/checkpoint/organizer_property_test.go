@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 // Property 4: Directory Structure Consistency

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 // CleanupPattern defines a file pattern for cleanup.
@@ -34,7 +35,7 @@ type CleanupConfig struct {
 }
 
 // CleanupManager handles temporary file cleanup operations.
-// It is designed to be reusable across different components of the hashi tool.
+// It is designed to be reusable across different components of the chexum tool.
 type CleanupManager struct {
 	verbose    bool
 	dryRun     bool
@@ -45,13 +46,13 @@ type CleanupManager struct {
 }
 
 // NewCleanupManager creates a new cleanup manager with default patterns.
-// By default, it targets common Go build artifacts and hashi-specific temporary files.
+// By default, it targets common Go build artifacts and chexum-specific temporary files.
 func NewCleanupManager(verbose bool) *CleanupManager {
 	cm := &CleanupManager{
 		verbose: verbose,
 		baseDir: os.TempDir(),
 		patterns: []CleanupPattern{
-			{Pattern: "hashi-*", Description: "Hashi temporary files", Enabled: true},
+			{Pattern: "chexum-*", Description: "Chexum temporary files", Enabled: true},
 			{Pattern: "checkpoint-*", Description: "Checkpoint temporary files", Enabled: true},
 			{Pattern: "test-*", Description: "Test temporary files", Enabled: true},
 			{Pattern: "*.tmp", Description: "Generic temporary files", Enabled: true},
@@ -205,10 +206,11 @@ func (c *CleanupManager) processWorkspace(ws *Workspace, result *CleanupResult) 
 	}
 
 	if c.verbose {
+		sanitizedRoot := security.SanitizeOutput(ws.Root)
 		if c.dryRun {
-			fmt.Printf("Would remove workspace: %s\n", ws.Root)
+			fmt.Printf("Would remove workspace: %s\n", sanitizedRoot)
 		} else {
-			fmt.Printf("Removing workspace: %s\n", ws.Root)
+			fmt.Printf("Removing workspace: %s\n", sanitizedRoot)
 		}
 	}
 
@@ -251,10 +253,11 @@ func (c *CleanupManager) processEntry(entry os.DirEntry, result *CleanupResult) 
 	}
 
 	if c.verbose {
+		sanitizedPath := security.SanitizeOutput(filePath)
 		if c.dryRun {
-			fmt.Printf("Would remove: %s\n", filePath)
+			fmt.Printf("Would remove: %s\n", sanitizedPath)
 		} else {
-			fmt.Printf("Removing: %s\n", filePath)
+			fmt.Printf("Removing: %s\n", sanitizedPath)
 		}
 	}
 

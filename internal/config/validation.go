@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Les-El/hashi/internal/conflict"
-	"github.com/Les-El/hashi/internal/security"
+	"github.com/Les-El/chexum/internal/conflict"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 // ValidateOutputFormat checks if the provided format string is supported.
@@ -46,44 +46,61 @@ func ValidateConfig(cfg *Config) ([]conflict.Warning, error) {
 	}
 
 	// 2. Format and algorithm validation
+	if err := falgValidate(cfg); err != nil {
+		return warnings, err
+	}
+
+	// 3. Size and date validation
+	if err := validateConstraints(cfg); err != nil {
+		return warnings, err
+	}
+
+	// 4. Output path validation
+	if err := validateAllOutputPaths(cfg); err != nil {
+		return warnings, err
+	}
+
+	return warnings, nil
+}
+
+func falgValidate(cfg *Config) error {
 	if err := ValidateOutputFormat(cfg.OutputFormat); err != nil {
-		return warnings, err
+		return err
 	}
+	return ValidateAlgorithm(cfg.Algorithm)
+}
 
-	if err := ValidateAlgorithm(cfg.Algorithm); err != nil {
-		return warnings, err
-	}
-
+func validateConstraints(cfg *Config) error {
 	if cfg.MinSize < 0 {
-		return warnings, fmt.Errorf("min-size must be non-negative, got %d", cfg.MinSize)
+		return fmt.Errorf("min-size must be non-negative, got %d", cfg.MinSize)
 	}
 	if cfg.MaxSize != -1 && cfg.MaxSize < 0 {
-		return warnings, fmt.Errorf("max-size must be non-negative or -1 (no limit), got %d", cfg.MaxSize)
+		return fmt.Errorf("max-size must be non-negative or -1 (no limit), got %d", cfg.MaxSize)
 	}
 	if cfg.MaxSize != -1 && cfg.MinSize > cfg.MaxSize {
-		return warnings, fmt.Errorf("min-size (%d) cannot be greater than max-size (%d)", cfg.MinSize, cfg.MaxSize)
-	}
-
-	if err := validateOutputPath(cfg.OutputFile, cfg); err != nil {
-		return warnings, fmt.Errorf("output file: %w", err)
-	}
-
-	if err := validateOutputPath(cfg.LogFile, cfg); err != nil {
-		return warnings, fmt.Errorf("log file: %w", err)
-	}
-
-	if err := validateOutputPath(cfg.LogJSON, cfg); err != nil {
-		return warnings, fmt.Errorf("JSON log file: %w", err)
+		return fmt.Errorf("min-size (%d) cannot be greater than max-size (%d)", cfg.MinSize, cfg.MaxSize)
 	}
 
 	if !cfg.ModifiedAfter.IsZero() && !cfg.ModifiedBefore.IsZero() {
 		if cfg.ModifiedAfter.After(cfg.ModifiedBefore) {
-			return warnings, fmt.Errorf("modified-after (%s) cannot be later than modified-before (%s)",
+			return fmt.Errorf("modified-after (%s) cannot be later than modified-before (%s)",
 				cfg.ModifiedAfter.Format("2006-01-02"), cfg.ModifiedBefore.Format("2006-01-02"))
 		}
 	}
+	return nil
+}
 
-	return warnings, nil
+func validateAllOutputPaths(cfg *Config) error {
+	if err := validateOutputPath(cfg.OutputFile, cfg); err != nil {
+		return fmt.Errorf("output file: %w", err)
+	}
+	if err := validateOutputPath(cfg.LogFile, cfg); err != nil {
+		return fmt.Errorf("log file: %w", err)
+	}
+	if err := validateOutputPath(cfg.LogJSON, cfg); err != nil {
+		return fmt.Errorf("JSON log file: %w", err)
+	}
+	return nil
 }
 
 // validateOutputPath validates that an output path is safe.

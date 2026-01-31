@@ -82,6 +82,29 @@ func TestCLI_Checkpoint(t *testing.T) {
 	}
 }
 
+func TestMain_Error(t *testing.T) {
+	// Create an environment that causes run() to fail
+	tmpDir, cleanup := testutil.TempDir(t)
+	defer cleanup()
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(oldWd)
+
+	// Blocking major_checkpoint creation will cause run() to fail at saveReports
+	testutil.CreateFile(t, tmpDir, "major_checkpoint", "blocker")
+
+	cmd := exec.Command(binaryName)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Error("expected error from checkpoint binary, got nil")
+	}
+
+	if !strings.Contains(string(output), "Error:") {
+		t.Errorf("expected output to contain 'Error:', got: %s", string(output))
+	}
+}
+
 func TestMainDirect(t *testing.T) {
 	// Skip CI analysis
 	os.Setenv("SKIP_CI_ANALYSIS", "true")
@@ -130,10 +153,6 @@ func cleanupTemporaryFiles() {
 }
 
 func TestRunAnalysis(t *testing.T) {
-	// We use a temporary directory to avoid affecting the project's own files during tests,
-	// although runAnalysis currently uses "." as root.
-	// We'll mock the analysis by ensuring it runs without error in a minimal environment.
-
 	tmpDir, cleanup := testutil.TempDir(t)
 	defer cleanup()
 
@@ -141,13 +160,7 @@ func TestRunAnalysis(t *testing.T) {
 	os.Chdir(tmpDir)
 	defer os.Chdir(oldWd)
 
-	// Create necessary directory structure and files for FlagSystem and other engines
-	testutil.CreateFile(t, tmpDir, "internal/config/config.go", "package config\n")
-	testutil.CreateFile(t, tmpDir, "README.md", "# User Docs\n")
-	testutil.CreateFile(t, tmpDir, "major_checkpoint/design.md", "# Design\n")
-
-	// Create a minimal go project structure so analyzers have something to look at
-	testutil.GenerateMockGoFile(t, tmpDir, "main.go", true, true)
+	setupRunAnalysisMockEnv(t, tmpDir)
 
 	ctx := context.Background()
 	engines := []checkpoint.AnalysisEngine{
@@ -155,26 +168,38 @@ func TestRunAnalysis(t *testing.T) {
 		checkpoint.NewDocAuditor(),
 	}
 	cleanupMgr := checkpoint.NewCleanupManager(false)
-	issues, _, err := runAnalysis(ctx, engines, cleanupMgr)
 
-	if err != nil {
-		t.Fatalf("runAnalysis failed: %v", err)
-	}
+	t.Run("Normal", func(t *testing.T) {
+		issues, _, err := runAnalysis(ctx, engines, cleanupMgr, tmpDir)
+		if err != nil {
+			t.Fatalf("runAnalysis failed: %v", err)
+		}
+		if len(issues) == 0 {
+			t.Errorf("expected some issues, got 0")
+		}
+	})
 
-	// We expect some issues due to TODO and unsafe in generated main.go
-	if len(issues) == 0 {
-		t.Errorf("expected some issues, got 0")
-	}
+	t.Run("NonExistentPath", func(t *testing.T) {
+		_, _, err := runAnalysis(ctx, engines, cleanupMgr, "/tmp/non-existent-path-abc-123")
+		if err == nil {
+			t.Error("expected error for non-existent path")
+		}
+	})
 
 	t.Run("EngineFailure", func(t *testing.T) {
-		engines := []checkpoint.AnalysisEngine{
-			&failingEngine{},
-		}
-		_, _, err := runAnalysis(ctx, engines, cleanupMgr)
+		failEngines := []checkpoint.AnalysisEngine{&failingEngine{}}
+		_, _, err := runAnalysis(ctx, failEngines, cleanupMgr, tmpDir)
 		if err == nil {
 			t.Error("expected error from failing engine, got nil")
 		}
 	})
+}
+
+func setupRunAnalysisMockEnv(t *testing.T, tmpDir string) {
+	testutil.CreateFile(t, tmpDir, "internal/config/config.go", "package config\n")
+	testutil.CreateFile(t, tmpDir, "README.md", "# User Docs\n")
+	testutil.CreateFile(t, tmpDir, "major_checkpoint/design.md", "# Design\n")
+	testutil.GenerateMockGoFile(t, tmpDir, "main.go", true, true)
 }
 
 type failingEngine struct{}
@@ -369,6 +394,16 @@ func TestRun(t *testing.T) {
 		t.Errorf("expected empty stderr, got %q", stderr)
 	}
 
+	t.Run("WithCleanup", func(t *testing.T) {
+		os.Setenv("CHEXUM_SKIP_CLEANUP", "")
+		defer os.Setenv("CHEXUM_SKIP_CLEANUP", "true")
+
+		stdout, _, _ := testutil.CaptureOutput(func() {
+			run()
+		})
+		testutil.AssertContains(t, stdout, "Performing post-analysis cleanup...")
+	})
+
 	t.Run("Failure", func(t *testing.T) {
 		// Block saveReports
 		os.RemoveAll(filepath.Join(tmpDir, "major_checkpoint"))
@@ -401,6 +436,11 @@ func TestHandleRunFailure(t *testing.T) {
 
 	// Minimal smoke test for handleRunFailure
 	handleRunFailure(cm, "test-phase", fmt.Errorf("test-error"))
+
+	t.Run("CleanupFail", func(t *testing.T) {
+		// Mock cleanup failure is hard because CleanupOnExit returns error but doesn't exit.
+		// It writes to stderr.
+	})
 }
 
 func TestCheckInitialResources(t *testing.T) {
@@ -410,6 +450,19 @@ func TestCheckInitialResources(t *testing.T) {
 	cm := checkpoint.NewCleanupManager(false)
 	cm.SetBaseDir(tmpDir)
 
-	// Should not panic or error
-	checkInitialResources(cm)
+	// Normal case
+	checkInitialResources(cm, 100.0)
+
+	// Trigger warning
+	stdout, _, _ := testutil.CaptureOutput(func() {
+		checkInitialResources(cm, -1.0)
+	})
+	testutil.AssertContains(t, stdout, "Warning: Storage usage")
+}
+
+func TestRegisterEngines(t *testing.T) {
+	engines := registerEngines()
+	if len(engines) == 0 {
+		t.Error("expected at least one engine")
+	}
 }

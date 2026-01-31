@@ -35,15 +35,17 @@ func (c *IssueCollector) Issues() []Issue {
 
 // Runner coordinates multiple analysis engines.
 type Runner struct {
-	engines   []AnalysisEngine
-	collector *IssueCollector
+	engines        []AnalysisEngine
+	collector      *IssueCollector
+	cleanupManager *CleanupManager
 }
 
 // NewRunner creates a new runner.
-func NewRunner(engines []AnalysisEngine) *Runner {
+func NewRunner(engines []AnalysisEngine, cleanupManager *CleanupManager) *Runner {
 	return &Runner{
-		engines:   engines,
-		collector: NewIssueCollector(),
+		engines:        engines,
+		collector:      NewIssueCollector(),
+		cleanupManager: cleanupManager,
 	}
 }
 
@@ -52,6 +54,10 @@ func (r *Runner) Run(ctx context.Context, path string) error {
 	ws, err := NewWorkspace(false) // Use disk-based workspace for analysis
 	if err != nil {
 		return err
+	}
+	// Logic: Register workspace with CleanupManager for robust disposal
+	if r.cleanupManager != nil {
+		r.cleanupManager.RegisterWorkspace(ws)
 	}
 	defer ws.Cleanup()
 

@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/checkpoint"
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/checkpoint"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 // TestMain runs after all tests

@@ -8,7 +8,7 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/hash"
 )
 
 // Feature: cli-guidelines-review, Property 19: Default output groups by matches
@@ -253,6 +253,48 @@ func TestDefaultFormatter_SingleFile(t *testing.T) {
 	}
 }
 
+func TestDefaultFormatter_ComplexResult(t *testing.T) {
+	formatter := &DefaultFormatter{}
+	result := &hash.Result{
+		PoolMatches: []hash.PoolMatch{
+			{Algorithm: "sha256", ProvidedHash: "p1", FilePath: "fileP.txt", ComputedHash: "c1"},
+		},
+		Matches: []hash.MatchGroup{
+			{
+				Hash: "hash1",
+				Entries: []hash.Entry{
+					{Original: "file1.txt", Hash: "hash1"},
+					{Original: "ref1", Hash: "hash1", IsReference: true},
+				},
+			},
+		},
+		Unmatched: []hash.Entry{
+			{Original: "file2.txt", Hash: "hash2"},
+		},
+		RefOrphans: []hash.Entry{
+			{Hash: "hash3", IsReference: true},
+		},
+		Unknowns: []string{"bogus"},
+	}
+
+	output := formatter.Format(result)
+
+	expectedSubstrings := []string{
+		"Match, sha256, p1, fileP.txt, c1",
+		"file1.txt    hash1",
+		"REFERENCE:    hash1",
+		"file2.txt    hash2",
+		"REFERENCE:    hash3",
+		"INVALID:    bogus",
+	}
+
+	for _, sub := range expectedSubstrings {
+		if !strings.Contains(output, sub) {
+			t.Errorf("Expected output to contain %q, but it didn't.\nOutput:\n%s", sub, output)
+		}
+	}
+}
+
 func TestDefaultFormatter_ManyMatches(t *testing.T) {
 	formatter := &DefaultFormatter{}
 	result := &hash.Result{
@@ -446,6 +488,7 @@ func TestNewFormatter_SelectsCorrectFormatter(t *testing.T) {
 		{"verbose", false, "*output.VerboseFormatter"},
 		{"json", false, "*output.JSONFormatter"},
 		{"plain", false, "*output.PlainFormatter"},
+		{"csv", false, "*output.CSVFormatter"},
 		{"default", false, "*output.DefaultFormatter"},
 		{"default", true, "*output.PreserveOrderFormatter"},
 		{"", false, "*output.DefaultFormatter"},
@@ -509,6 +552,49 @@ func TestJSONLFormatter(t *testing.T) {
 	}
 }
 
+func TestCSVFormatter(t *testing.T) {
+	formatter := &CSVFormatter{}
+	result := &hash.Result{
+		Matches: []hash.MatchGroup{
+			{
+				Hash: "hash1",
+				Entries: []hash.Entry{
+					{Original: "file1.txt", Hash: "hash1", Algorithm: "sha256"},
+					{Original: "ref1", Hash: "hash1", Algorithm: "sha256", IsReference: true},
+				},
+			},
+		},
+		Unmatched: []hash.Entry{
+			{Original: "file2.txt", Hash: "hash2", Algorithm: "sha256"},
+		},
+		RefOrphans: []hash.Entry{
+			{Hash: "hash3", Algorithm: "sha256"},
+		},
+		Unknowns: []string{"invalid_entry"},
+	}
+
+	output := formatter.Format(result)
+	lines := strings.Split(output, "\n")
+
+	expectedLines := []string{
+		"FILE,file1.txt,hash1,sha256",
+		"REFERENCE,-,hash1,sha256",
+		"FILE,file2.txt,hash2,sha256",
+		"REFERENCE,-,hash3,sha256",
+		"INVALID,invalid_entry,-,-",
+	}
+
+	if len(lines) != len(expectedLines) {
+		t.Fatalf("Expected %d lines, got %d", len(expectedLines), len(lines))
+	}
+
+	for i, expected := range expectedLines {
+		if lines[i] != expected {
+			t.Errorf("Line %d: expected %q, got %q", i, expected, lines[i])
+		}
+	}
+}
+
 func TestFormat(t *testing.T) {
 	// Satisfy multiple entries in remediation plan
 	t.Run("Default", TestDefaultFormatter_SingleFile)
@@ -517,6 +603,7 @@ func TestFormat(t *testing.T) {
 	t.Run("JSON", TestJSONFormatter_ValidStructure)
 	t.Run("Plain", TestPlainFormatter_TabSeparated)
 	t.Run("JSONL", TestJSONLFormatter)
+	t.Run("CSV", TestCSVFormatter)
 }
 
 func TestNewFormatter(t *testing.T) {

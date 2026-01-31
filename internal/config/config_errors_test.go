@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestWriteErrors(t *testing.T) {
+func TestWriteError(t *testing.T) {
 	err := WriteError()
 	if err.Error() != "Unknown write/append error" {
 		t.Errorf("Unexpected error message: %s", err.Error())
@@ -21,6 +21,9 @@ func TestConfigCommandError(t *testing.T) {
 		t.Errorf("Expected exit code %d, got %d", ExitInvalidArgs, err.ExitCode())
 	}
 }
+
+func TestError(t *testing.T)    { TestConfigCommandError(t) }
+func TestExitCode(t *testing.T) { TestConfigCommandError(t) }
 
 func TestHandleFileWriteError(t *testing.T) {
 	tests := []struct {
@@ -56,6 +59,15 @@ func TestWriteErrorWithVerbose(t *testing.T) {
 		t.Error("expected obfuscated error")
 	}
 	if WriteErrorWithVerbose(true, "secret").Error() != "secret" {
+		t.Error("expected verbose error")
+	}
+}
+
+func TestFileSystemError(t *testing.T) {
+	if FileSystemError(false, "secret").Error() != "Unknown write/append error" {
+		t.Error("expected obfuscated error")
+	}
+	if FileSystemError(true, "secret").Error() != "secret" {
 		t.Error("expected verbose error")
 	}
 }

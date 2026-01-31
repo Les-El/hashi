@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/hash"
 )
 
 // Manifest represents a snapshot of file hashes and metadata.

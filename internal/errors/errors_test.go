@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/Les-El/hashi/internal/color"
+	"github.com/Les-El/chexum/internal/color"
 )
 
 // Feature: cli-guidelines-review, Property 4: Error messages are human-readable

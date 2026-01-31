@@ -1,6 +1,6 @@
 # Post-Release Review and Refinement Process
 
-This document outlines the standard process for reviewing and refining `hashi` after each major release milestone.
+This document outlines the standard process for reviewing and refining `chexum` after each major release milestone.
 
 ## 1. Feedback Collection
 - **User Issues**: Monitor the GitHub issue tracker for bug reports and feature requests.

@@ -1,4 +1,4 @@
-// Package config handles configuration and argument parsing for hashi.
+// Package config handles configuration and argument parsing for chexum.
 //
 // This file is now a stub; the package has been modularized into:
 // - types.go: Core structs and constants

@@ -167,19 +167,51 @@ func TestCleanupOnExit(t *testing.T) {
 	}
 }
 
+func TestRegisterWorkspace(t *testing.T) {
+	cleanup := NewCleanupManager(false)
+	ws, _ := NewWorkspace(true) // memory workspace
+	cleanup.RegisterWorkspace(ws)
+	if len(cleanup.workspaces) != 1 {
+		t.Errorf("Expected 1 workspace, got %d", len(cleanup.workspaces))
+	}
+	if cleanup.workspaces[0] != ws {
+		t.Error("Registered workspace does not match")
+	}
+}
+
 func TestCleanupManager_SetDryRun(t *testing.T) {
 	cleanup := NewCleanupManager(false)
 	cleanup.SetDryRun(true)
+	if !cleanup.dryRun {
+		t.Error("Expected dryRun to be true")
+	}
+	cleanup.SetDryRun(false)
+	if cleanup.dryRun {
+		t.Error("Expected dryRun to be false")
+	}
 }
 
 func TestCleanupManager_SetBaseDir(t *testing.T) {
 	cleanup := NewCleanupManager(false)
-	cleanup.SetBaseDir("/tmp")
+	cleanup.SetBaseDir("/tmp/custom")
+	if cleanup.baseDir != "/tmp/custom" {
+		t.Errorf("Expected baseDir to be /tmp/custom, got %s", cleanup.baseDir)
+	}
 }
 
 func TestCleanupManager_AddCustomPattern(t *testing.T) {
 	cleanup := NewCleanupManager(false)
 	cleanup.AddCustomPattern("*.log", "Log files")
+	found := false
+	for _, p := range cleanup.patterns {
+		if p.Pattern == "*.log" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Custom pattern *.log not found")
+	}
 }
 
 func TestCleanupManager_LoadConfig(t *testing.T) {

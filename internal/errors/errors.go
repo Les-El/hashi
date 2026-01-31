@@ -1,4 +1,4 @@
-// Package errors provides error handling and formatting for hashi.
+// Package errors provides error handling and formatting for chexum.
 //
 // It transforms technical errors into user-friendly messages with
 // actionable suggestions. Errors are grouped by type to reduce noise,
@@ -12,7 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Les-El/hashi/internal/color"
+	"github.com/Les-El/chexum/internal/color"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 // ErrorType categorizes errors for grouping and handling.
@@ -78,17 +79,17 @@ func (h *Handler) FormatError(err error) string {
 	}
 
 	// Check if it's our custom error type
-	var hashiErr *Error
-	if errors.As(err, &hashiErr) {
-		return h.formatHashiError(hashiErr)
+	var chexumErr *Error
+	if errors.As(err, &chexumErr) {
+		return h.formatChexumError(chexumErr)
 	}
 
 	// Handle standard errors
 	return h.formatStandardError(err)
 }
 
-// formatHashiError formats a hashi-specific error.
-func (h *Handler) formatHashiError(err *Error) string {
+// formatChexumError formats a chexum-specific error.
+func (h *Handler) formatChexumError(err *Error) string {
 	var sb strings.Builder
 
 	// Error message with icon
@@ -171,9 +172,9 @@ func (h *Handler) createMessage(err error, errType ErrorType) (message, suggesti
 
 // SuggestFix returns a suggestion for fixing an error.
 func (h *Handler) SuggestFix(err error) string {
-	var hashiErr *Error
-	if errors.As(err, &hashiErr) {
-		return hashiErr.Suggestion
+	var chexumErr *Error
+	if errors.As(err, &chexumErr) {
+		return chexumErr.Suggestion
 	}
 
 	errType := classifyError(err)
@@ -225,11 +226,11 @@ func GroupErrors(errs []error) map[ErrorType][]error {
 	groups := make(map[ErrorType][]error)
 
 	for _, err := range errs {
-		var hashiErr *Error
+		var chexumErr *Error
 		var errType ErrorType
 
-		if errors.As(err, &hashiErr) {
-			errType = hashiErr.Type
+		if errors.As(err, &chexumErr) {
+			errType = chexumErr.Type
 		} else {
 			errType = classifyError(err)
 		}
@@ -253,10 +254,12 @@ func sanitizePath(path string) string {
 	}
 
 	// Return a reasonable path representation
-	if dir == "." {
-		return base
+	result := base
+	if dir != "." {
+		result = filepath.Join(dir, base)
 	}
-	return filepath.Join(dir, base)
+
+	return security.SanitizeOutput(result)
 }
 
 // sanitizeErrorMessage removes technical details from error messages.

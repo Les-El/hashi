@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Les-El/hashi/internal/conflict"
+	"github.com/Les-El/chexum/internal/conflict"
 	"github.com/spf13/pflag"
 )
 
@@ -47,7 +47,7 @@ func (p *CLIParser) Parse(cfg *Config) error {
 // ParseArgs parses command-line arguments and returns a Config.
 func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 	cfg := DefaultConfig()
-	fs := pflag.NewFlagSet("hashi", pflag.ContinueOnError)
+	fs := pflag.NewFlagSet("chexum", pflag.ContinueOnError)
 
 	// Load .env variables
 	envVars, _ := LoadDotEnv("")
@@ -58,12 +58,9 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 		Parsers: []Parser{
 			NewCLIParser(args, fs),
 			NewEnvParser(envVars, fs),
+			NewFileParser("", fs), // Path will be taken from cfg.ConfigFile during Parse
 		},
 	}
-
-	// Add FileParser (requires CLI or Env to have determined the path possibly)
-	// Actually, FileParser.Parse handles FindConfigFile()
-	mp.Parsers = append(mp.Parsers, NewFileParser(cfg.ConfigFile, fs))
 
 	if err := mp.Parse(cfg); err != nil {
 		return nil, nil, err
@@ -79,7 +76,7 @@ func ParseArgs(args []string) (*Config, []conflict.Warning, error) {
 
 func defineFlags(flagSet *pflag.FlagSet, cfg *Config) {
 	flagSet.BoolVarP(&cfg.Recursive, "recursive", "r", false, "Process directories recursively")
-	flagSet.BoolVar(&cfg.Hidden, "hidden", false, "Include hidden files")
+	flagSet.BoolVarP(&cfg.Hidden, "hidden", "H", false, "Include hidden files")
 	flagSet.StringVarP(&cfg.Algorithm, "algorithm", "a", "sha256", "Hash algorithm")
 	flagSet.BoolVar(&cfg.DryRun, "dry-run", false, "Preview files without hashing")
 	flagSet.BoolVarP(&cfg.Verbose, "verbose", "v", false, "Enable verbose output")
@@ -87,6 +84,10 @@ func defineFlags(flagSet *pflag.FlagSet, cfg *Config) {
 	flagSet.BoolVarP(&cfg.Bool, "bool", "b", false, "Boolean output mode")
 	flagSet.BoolVar(&cfg.PreserveOrder, "preserve-order", false, "Keep input order")
 	flagSet.BoolVar(&cfg.MatchRequired, "match-required", false, "Exit 0 only if matches found")
+	_ = flagSet.MarkDeprecated("match-required", "use --any-match instead")
+	flagSet.BoolVar(&cfg.AnyMatch, "any-match", false, "Exit 0 if at least one match is found")
+	flagSet.BoolVar(&cfg.AllMatch, "all-match", false, "Exit 0 only if all files match")
+	flagSet.BoolVar(&cfg.KeepTmp, "keep-tmp", false, "Keep temporary files after execution")
 	flagSet.StringVarP(&cfg.OutputFormat, "format", "f", "default", "Output format")
 	flagSet.StringVarP(&cfg.OutputFile, "output", "o", "", "Write output to file")
 	flagSet.BoolVar(&cfg.Append, "append", false, "Append to output file")
@@ -95,6 +96,7 @@ func defineFlags(flagSet *pflag.FlagSet, cfg *Config) {
 	flagSet.BoolVar(&cfg.JSON, "json", false, "Output in JSON format")
 	flagSet.BoolVar(&cfg.JSONL, "jsonl", false, "Output in JSONL format")
 	flagSet.BoolVar(&cfg.Plain, "plain", false, "Output in plain format")
+	flagSet.BoolVar(&cfg.CSV, "csv", false, "Output in CSV format")
 
 	flagSet.StringVar(&cfg.LogFile, "log-file", "", "File for logging")
 	flagSet.StringVar(&cfg.LogJSON, "log-json", "", "File for JSON logging")
@@ -186,71 +188,19 @@ func handleArguments(cfg *Config, fs *pflag.FlagSet) error {
 		}
 	}
 
-	files, hashes, err := ClassifyArguments(remainingArgs, cfg.Algorithm)
+	files, hashes, unknowns, err := ClassifyArguments(remainingArgs, cfg.Algorithm)
 	if err != nil {
 		return err
 	}
 	cfg.Files = files
 	cfg.Hashes = hashes
+	cfg.Unknowns = unknowns
 	return nil
 }
 
+// Reviewed: NESTED-LOOP - Shorthand bundle parsing is O(N*M) where M is small.
 func finalizeConfig(cfg *Config, args []string, flagSet *pflag.FlagSet) (*Config, []conflict.Warning, error) {
-	var lastFormat string
-
-	// Track which format-related flags were actually set by the user.
-	// We use this to filter args because pflag.Visit iterates lexicographically.
-	formatFlagsSet := make(map[string]bool)
-	flagSet.Visit(func(f *pflag.Flag) {
-		switch f.Name {
-		case "json", "jsonl", "plain", "format":
-			formatFlagsSet[f.Name] = true
-		}
-	})
-
-	// Iterate through args in order to find the last one that matches a set format flag.
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if strings.HasPrefix(arg, "--") {
-			name := strings.Split(strings.TrimPrefix(arg, "--"), "=")[0]
-			if formatFlagsSet[name] {
-				if name == "format" {
-					lastFormat = cfg.OutputFormat
-				} else {
-					lastFormat = name
-				}
-				// Skip value if it's --format and not --format=value
-				if name == "format" && !strings.Contains(arg, "=") && i+1 < len(args) {
-					i++
-				}
-			}
-		} else if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
-			// Shorthands
-			for j := 1; j < len(arg); j++ {
-				s := string(arg[j])
-				if f := flagSet.ShorthandLookup(s); f != nil && formatFlagsSet[f.Name] {
-					if f.Name == "format" {
-						lastFormat = cfg.OutputFormat
-						// If 'f' consumes an argument (either bundled or next arg)
-						if j == len(arg)-1 && i+1 < len(args) {
-							i++
-						}
-					} else {
-						lastFormat = f.Name
-					}
-					// If a shorthand consumes an argument, it must be the last one in the bundle.
-					// For hashi, only -f takes an argument.
-					if f.Name == "format" {
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if lastFormat == "" {
-		lastFormat = cfg.OutputFormat
-	}
+	lastFormat := detectLastFormat(cfg, args, flagSet)
 
 	flagSetMap := map[string]bool{
 		"json":    cfg.JSON,
@@ -266,13 +216,7 @@ func finalizeConfig(cfg *Config, args []string, flagSet *pflag.FlagSet) (*Config
 		return nil, nil, err
 	}
 
-	cfg.OutputFormat = string(state.Format)
-	cfg.Quiet = (state.Verbosity == conflict.VerbosityQuiet)
-	cfg.Verbose = (state.Verbosity == conflict.VerbosityVerbose)
-	if state.Mode == conflict.ModeBool {
-		cfg.Bool = true
-		cfg.Quiet = true
-	}
+	applyResolvedState(cfg, state)
 
 	validationWarnings, err := ValidateConfig(cfg)
 	if err != nil {
@@ -282,8 +226,66 @@ func finalizeConfig(cfg *Config, args []string, flagSet *pflag.FlagSet) (*Config
 	return cfg, append(resolveWarnings, validationWarnings...), nil
 }
 
-// ClassifyArguments separates arguments into file paths and hash strings.
-func ClassifyArguments(args []string, algorithm string) (files []string, hashes []string, err error) {
+func detectLastFormat(cfg *Config, args []string, flagSet *pflag.FlagSet) string {
+	formatFlagsSet := make(map[string]bool)
+	flagSet.Visit(func(f *pflag.Flag) {
+		switch f.Name {
+		case "json", "jsonl", "plain", "csv", "format":
+			formatFlagsSet[f.Name] = true
+		}
+	})
+
+	var lastFormat string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "--") {
+			name := strings.Split(strings.TrimPrefix(arg, "--"), "=")[0]
+			if formatFlagsSet[name] {
+				if name == "format" {
+					lastFormat = cfg.OutputFormat
+				} else {
+					lastFormat = name
+				}
+				if name == "format" && !strings.Contains(arg, "=") && i+1 < len(args) {
+					i++
+				}
+			}
+		} else if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
+			for j := 1; j < len(arg); j++ {
+				s := string(arg[j])
+				if f := flagSet.ShorthandLookup(s); f != nil && formatFlagsSet[f.Name] {
+					if f.Name == "format" {
+						lastFormat = cfg.OutputFormat
+						if j == len(arg)-1 && i+1 < len(args) {
+							i++
+						}
+						break
+					} else {
+						lastFormat = f.Name
+					}
+				}
+			}
+		}
+	}
+
+	if lastFormat == "" {
+		lastFormat = cfg.OutputFormat
+	}
+	return lastFormat
+}
+
+func applyResolvedState(cfg *Config, state *conflict.RunState) {
+	cfg.OutputFormat = string(state.Format)
+	cfg.Quiet = (state.Verbosity == conflict.VerbosityQuiet)
+	cfg.Verbose = (state.Verbosity == conflict.VerbosityVerbose)
+	if state.Mode == conflict.ModeBool {
+		cfg.Bool = true
+		cfg.Quiet = true
+	}
+}
+
+// ClassifyArguments separates arguments into file paths, hash strings, and unknowns.
+func ClassifyArguments(args []string, algorithm string) (files []string, hashes []string, unknowns []string, err error) {
 	for _, arg := range args {
 		if arg == "" {
 			continue
@@ -298,10 +300,8 @@ func ClassifyArguments(args []string, algorithm string) (files []string, hashes 
 		}
 		detectedAlgorithms := detectHashAlgorithm(arg)
 		if len(detectedAlgorithms) == 0 {
-			if isValidHexString(arg) {
-				return nil, nil, fmt.Errorf("argument %q looks like a hash but has an unknown length", arg)
-			}
-			files = append(files, arg)
+			// If it's not a file and not a valid hash length, it's an unknown string.
+			unknowns = append(unknowns, arg)
 			continue
 		}
 		currentAlgorithmFound := false
@@ -314,22 +314,16 @@ func ClassifyArguments(args []string, algorithm string) (files []string, hashes 
 		if currentAlgorithmFound {
 			hashes = append(hashes, strings.ToLower(arg))
 		} else {
-			if len(detectedAlgorithms) == 1 {
-				return nil, nil, fmt.Errorf("hash length doesn't match %s (expected %d characters, got %d).\nThis looks like %s. Try: hashi --algo %s [files...] %s",
-					algorithm, getExpectedLength(algorithm), len(arg),
-					strings.ToUpper(detectedAlgorithms[0]), detectedAlgorithms[0], arg)
-			} else {
-				algorithmList := make([]string, len(detectedAlgorithms))
-				for i, alg := range detectedAlgorithms {
-					algorithmList[i] = strings.ToUpper(alg)
-				}
-				return nil, nil, fmt.Errorf("hash length doesn't match %s (expected %d characters, got %d).\nCould be: %s\nSpecify algorithm with: hashi --algo [algorithm] [files...] %s",
-					algorithm, getExpectedLength(algorithm), len(arg),
-					strings.Join(algorithmList, ", "), arg)
-			}
+			// If it looks like a hash but doesn't match the current algorithm,
+			// we could treat it as unknown or error.
+			// Given the "Pool Matching" intent, let's treat it as unknown for now
+			// or keep the error if we want strictness.
+			// The user said "INVAlID: for strings that are neither files nor hashes".
+			// So length-mismatched hashes should probably be INVALID.
+			unknowns = append(unknowns, arg)
 		}
 	}
-	return files, hashes, nil
+	return files, hashes, unknowns, nil
 }
 
 func detectHashAlgorithm(hashStr string) []string {

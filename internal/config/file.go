@@ -60,6 +60,8 @@ type ConfigFile struct {
 		Bool          *bool    `toml:"bool,omitempty"`
 		PreserveOrder *bool    `toml:"preserve_order,omitempty"`
 		MatchRequired *bool    `toml:"match_required,omitempty"`
+		AnyMatch      *bool    `toml:"any_match,omitempty"`
+		AllMatch      *bool    `toml:"all_match,omitempty"`
 		OutputFormat  *string  `toml:"output_format,omitempty"`
 		OutputFile    *string  `toml:"output_file,omitempty"`
 		Append        *bool    `toml:"append,omitempty"`
@@ -156,6 +158,8 @@ func (cf *ConfigFile) applyBoolDefaults(cfg *Config, flagSet *pflag.FlagSet) {
 		{d.Bool, "bool", &cfg.Bool},
 		{d.PreserveOrder, "preserve-order", &cfg.PreserveOrder},
 		{d.MatchRequired, "match-required", &cfg.MatchRequired},
+		{d.AnyMatch, "any-match", &cfg.AnyMatch},
+		{d.AllMatch, "all-match", &cfg.AllMatch},
 		{d.Append, "append", &cfg.Append},
 		{d.Force, "force", &cfg.Force},
 	}
@@ -288,16 +292,16 @@ func parseDate(s string) (time.Time, error) {
 // FindConfigFile searches standard locations for a configuration file.
 func FindConfigFile() string {
 	locations := []string{
-		"./.hashi.toml",
+		"./.chexum.toml",
 	}
 	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
-		locations = append(locations, filepath.Join(xdgConfigHome, "hashi", "config.toml"))
+		locations = append(locations, filepath.Join(xdgConfigHome, "chexum", "config.toml"))
 	}
 	if home := os.Getenv("HOME"); home != "" {
-		locations = append(locations, filepath.Join(home, ".config", "hashi", "config.toml"))
+		locations = append(locations, filepath.Join(home, ".config", "chexum", "config.toml"))
 	}
 	if home := os.Getenv("HOME"); home != "" {
-		locations = append(locations, filepath.Join(home, ".hashi", "config.toml"))
+		locations = append(locations, filepath.Join(home, ".chexum", "config.toml"))
 	}
 	for _, location := range locations {
 		if _, err := os.Stat(location); err == nil {

@@ -1,4 +1,4 @@
-// Package main tests for the hashi CLI tool feature set.
+// Package main tests for the chexum CLI tool feature set.
 package main
 
 import (
@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/config"
-	"github.com/Les-El/hashi/internal/console"
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/console"
+	"github.com/Les-El/chexum/internal/hash"
 )
 
 // TestConfigIntegration_FlagsToConfig tests that ParseArgs correctly populates Config based on conflict resolution.
@@ -176,7 +176,7 @@ func TestQuietMode(t *testing.T) {
 	}
 }
 
-// TestProperty_DefaultBehavior verifies that hashi defaults to the current directory when no args are provided.
+// TestProperty_DefaultBehavior verifies that chexum defaults to the current directory when no args are provided.
 // Property 1: Default behavior processes current directory
 func TestProperty_DefaultBehavior(t *testing.T) {
 	cfg := config.DefaultConfig()
@@ -201,9 +201,9 @@ func TestProperty_DefaultBehavior(t *testing.T) {
 	}
 }
 
-// TestProperty_Idempotence verifies that running hashi multiple times on the same input produces the same results.
+// TestProperty_Idempotence verifies that running chexum multiple times on the same input produces the same results.
 func TestProperty_Idempotence(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "hashi-idemp-*")
+	tmpDir, _ := os.MkdirTemp("", "chexum-idemp-*")
 	defer os.RemoveAll(tmpDir)
 
 	path := filepath.Join(tmpDir, "test.txt")

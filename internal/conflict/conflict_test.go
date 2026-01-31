@@ -4,7 +4,7 @@ package conflict_test
 import (
 	"testing"
 
-	"github.com/Les-El/hashi/internal/conflict"
+	"github.com/Les-El/chexum/internal/conflict"
 )
 
 // TestConflictResolution_PipelineOfIntent tests the conflict resolution logic.

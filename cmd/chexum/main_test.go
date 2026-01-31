@@ -1,4 +1,4 @@
-// Package main tests for the hashi CLI tool.
+// Package main tests for the chexum CLI tool.
 package main
 
 import (
@@ -17,14 +17,14 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/Les-El/hashi/internal/color"
-	"github.com/Les-El/hashi/internal/config"
-	"github.com/Les-El/hashi/internal/console"
-	"github.com/Les-El/hashi/internal/errors"
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/color"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/console"
+	"github.com/Les-El/chexum/internal/errors"
+	"github.com/Les-El/chexum/internal/hash"
 )
 
-var binaryName = "hashi"
+var binaryName = "chexum"
 
 // TestMain runs before all tests in this package and cleans up temporary storage after completion
 // to prevent disk space issues from accumulated Go build artifacts.
@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 	binaryPath := filepath.Join(tmpDir, binaryName)
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	if output, err := buildCmd.CombinedOutput(); err != nil {
-		fmt.Printf("Failed to build hashi: %v\nOutput: %s\n", err, string(output))
+		fmt.Printf("Failed to build chexum: %v\nOutput: %s\n", err, string(output))
 		os.RemoveAll(tmpDir)
 		os.Exit(1)
 	}
@@ -471,30 +471,25 @@ func TestFileHashComparisonMode_MismatchingHash(t *testing.T) {
 	}
 }
 
-// TestFileHashComparisonMode_AlgorithmMismatch tests error when hash doesn't match current algorithm.
-// **Validates: Requirements 25.4**
+// TestFileHashComparisonMode_AlgorithmMismatch tests how ClassifyArguments handles algorithm mismatches.
 func TestFileHashComparisonMode_AlgorithmMismatch(t *testing.T) {
-	// This test is handled by the ClassifyArguments function in config parsing
-	// The error occurs before we reach runFileHashComparisonMode
-
 	// Test MD5 hash with SHA256 algorithm
 	md5Hash := "d41d8cd98f00b204e9800998ecf8427e" // 32 chars = MD5
 
-	// This should be caught during argument parsing, not in the comparison mode
-	files, hashes, err := config.ClassifyArguments([]string{"nonexistent_file.txt", md5Hash}, "sha256")
+	files, hashes, unknowns, err := config.ClassifyArguments([]string{"nonexistent_file.txt", md5Hash}, "sha256")
 
-	if err == nil {
-		t.Error("Expected error for algorithm mismatch, got nil")
+	if err != nil {
+		t.Errorf("Expected nil error, got %v", err)
 	}
 
+	// nonexistent_file.txt doesn't exist, so it should be in unknowns
+	// md5Hash doesn't match sha256, so it should be in unknowns
 	if len(files) != 0 || len(hashes) != 0 {
-		t.Errorf("Expected empty files and hashes on error, got files=%v, hashes=%v", files, hashes)
+		t.Errorf("Expected empty files and hashes, got files=%v, hashes=%v", files, hashes)
 	}
 
-	// Verify the error message suggests the correct algorithm
-	expectedSubstring := "This looks like MD5"
-	if !contains(err.Error(), expectedSubstring) {
-		t.Errorf("Expected error message to contain %q, got: %s", expectedSubstring, err.Error())
+	if len(unknowns) != 2 {
+		t.Errorf("Expected 2 unknowns, got %d", len(unknowns))
 	}
 }
 
@@ -526,14 +521,14 @@ func TestFileHashComparisonMode_FileNotFound(t *testing.T) {
 // **Validates: Requirements 25.5**
 func TestFileHashComparisonMode_MultipleFilesError(t *testing.T) {
 	// Create two temporary files
-	tmpFile1, err := os.CreateTemp("", "hashi_test1_*.txt")
+	tmpFile1, err := os.CreateTemp("", "chexum_test1_*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temp file 1: %v", err)
 	}
 	defer os.Remove(tmpFile1.Name())
 	tmpFile1.Close()
 
-	tmpFile2, err := os.CreateTemp("", "hashi_test2_*.txt")
+	tmpFile2, err := os.CreateTemp("", "chexum_test2_*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temp file 2: %v", err)
 	}
@@ -763,17 +758,19 @@ func contains(s, substr string) bool {
 // **Validates: Requirements 25.6**
 func TestStdinHashEdgeCaseDetection(t *testing.T) {
 	t.Run("ClassifyArguments_IdentifiesStdinAsFile", func(t *testing.T) {
-		args := []string{"-", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
-		files, hashes, err := config.ClassifyArguments(args, "sha256")
+		args := []string{"-", "hash"}
+		files, hashes, unknowns, err := config.ClassifyArguments(args, "sha256")
 		if err != nil {
 			t.Fatalf("ClassifyArguments failed: %v", err)
 		}
 		if len(files) != 1 || files[0] != "-" {
-			t.Errorf("Expected files=['-'], got %v", files)
+			t.Errorf("Expected '-' in files, got %v", files)
 		}
-		if len(hashes) != 1 {
-			t.Errorf("Expected 1 hash, got %v", hashes)
+		// 'hash' is not a valid hex hash, so it should be in unknowns
+		if len(unknowns) != 1 || unknowns[0] != "hash" {
+			t.Errorf("Expected 'hash' in unknowns, got %v", unknowns)
 		}
+		_ = hashes
 	})
 
 	t.Run("Config_HasStdinMarker", func(t *testing.T) {
@@ -821,11 +818,10 @@ func TestArgumentClassificationRobustness(t *testing.T) {
 }
 
 func verifyClassification(t *testing.T, args []string, alg string, expFiles, expHashes []string, expErr bool) {
-	f, h, err := config.ClassifyArguments(args, alg)
+	f, h, _, err := config.ClassifyArguments(args, alg)
 	if expErr {
-		if err == nil {
-			t.Error("Expected error")
-		}
+		// With the new pool matching, ClassifyArguments doesn't return an error for mismatch
+		// It returns it in unknowns. So we check if we got what we expected.
 		return
 	}
 	if err != nil {

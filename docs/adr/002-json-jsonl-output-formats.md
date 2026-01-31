@@ -4,7 +4,7 @@
 **ACCEPTED** - Implementation in progress
 
 ## Context & Problem Statement
-`hashi` requires structured output formats to move beyond simple text-parsing and support modern CI/CD pipelines. We need to support both single-operation reports and high-volume data streaming while maintaining an audit trail of how hashes were generated.
+`chexum` requires structured output formats to move beyond simple text-parsing and support modern CI/CD pipelines. We need to support both single-operation reports and high-volume data streaming while maintaining an audit trail of how hashes were generated.
 
 ## Decision
 
@@ -13,7 +13,7 @@ We will implement two complementary JSON-based output formats:
 
 #### `--json` (The Final Report)
 - **Purpose:** A single, valid JSON document representing a complete "session"
-- **Structure:** An "Envelope" object containing a `hashi` metadata block and a `results` array
+- **Structure:** An "Envelope" object containing a `chexum` metadata block and a `results` array
 - **Use Case:** Small-to-medium batches where the user needs a verifiable record of the command and version used
 - **Metadata:** Includes normalized command string (expanded flags), version, and start/end timestamps
 
@@ -43,7 +43,7 @@ Both formats will share a "Flat Ergonomic" schema for individual items to ensure
 - **Error Resilience:** If a file cannot be read, it still generates a JSON object with `status: "failure"` and an error message, ensuring the stream count matches the file discovery count
 
 ### D. Command Normalization
-To support reproducibility, `hashi` will implement a normalization engine:
+To support reproducibility, `chexum` will implement a normalization engine:
 - Shorthand flags (e.g., `-r -j`) are expanded to long-form (e.g., `--recursive --json`) in the recorded metadata
 - This ensures that the "Command" field in a JSON report is a canonical representation of the operation
 
@@ -52,9 +52,9 @@ To support reproducibility, `hashi` will implement a normalization engine:
 ### JSON Format Example
 ```json
 {
-  "hashi": {
+  "chexum": {
     "version": "1.2.0",
-    "command": "hashi --recursive --json --algorithm=sha256 /path/to/files",
+    "command": "chexum --recursive --json --algorithm=sha256 /path/to/files",
     "start_time": "2024-01-15T10:30:00Z",
     "end_time": "2024-01-15T10:30:05Z"
   },

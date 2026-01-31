@@ -48,36 +48,38 @@ func LoadEnvConfig(extra map[string]string) *EnvConfig {
 		Home:       get("HOME"),
 		ConfigHome: get("XDG_CONFIG_HOME"),
 
-		HashiConfig:         get("HASHI_CONFIG"),
-		HashiAlgorithm:      get("HASHI_ALGORITHM"),
-		HashiOutputFormat:   get("HASHI_OUTPUT_FORMAT"),
-		HashiDryRun:         parseBool(get("HASHI_DRY_RUN")),
-		HashiRecursive:      parseBool(get("HASHI_RECURSIVE")),
-		HashiHidden:         parseBool(get("HASHI_HIDDEN")),
-		HashiVerbose:        parseBool(get("HASHI_VERBOSE")),
-		HashiQuiet:          parseBool(get("HASHI_QUIET")),
-		HashiBool:           parseBool(get("HASHI_BOOL")),
-		HashiPreserveOrder:  parseBool(get("HASHI_PRESERVE_ORDER")),
-		HashiMatchRequired:  parseBool(get("HASHI_MATCH_REQUIRED")),
-		HashiManifest:       get("HASHI_MANIFEST"),
-		HashiOnlyChanged:    parseBool(get("HASHI_ONLY_CHANGED")),
-		HashiOutputManifest: get("HASHI_OUTPUT_MANIFEST"),
+		ChexumConfig:         get("CHEXUM_CONFIG"),
+		ChexumAlgorithm:      get("CHEXUM_ALGORITHM"),
+		ChexumOutputFormat:   get("CHEXUM_OUTPUT_FORMAT"),
+		ChexumDryRun:         parseBool(get("CHEXUM_DRY_RUN")),
+		ChexumRecursive:      parseBool(get("CHEXUM_RECURSIVE")),
+		ChexumHidden:         parseBool(get("CHEXUM_HIDDEN")),
+		ChexumVerbose:        parseBool(get("CHEXUM_VERBOSE")),
+		ChexumQuiet:          parseBool(get("CHEXUM_QUIET")),
+		ChexumBool:           parseBool(get("CHEXUM_BOOL")),
+		ChexumPreserveOrder:  parseBool(get("CHEXUM_PRESERVE_ORDER")),
+		ChexumMatchRequired:  parseBool(get("CHEXUM_MATCH_REQUIRED")),
+		ChexumAnyMatch:       parseBool(get("CHEXUM_ANY_MATCH")),
+		ChexumAllMatch:       parseBool(get("CHEXUM_ALL_MATCH")),
+		ChexumManifest:       get("CHEXUM_MANIFEST"),
+		ChexumOnlyChanged:    parseBool(get("CHEXUM_ONLY_CHANGED")),
+		ChexumOutputManifest: get("CHEXUM_OUTPUT_MANIFEST"),
 
-		HashiOutputFile: get("HASHI_OUTPUT_FILE"),
-		HashiAppend:     parseBool(get("HASHI_APPEND")),
-		HashiForce:      parseBool(get("HASHI_FORCE")),
+		ChexumOutputFile: get("CHEXUM_OUTPUT_FILE"),
+		ChexumAppend:     parseBool(get("CHEXUM_APPEND")),
+		ChexumForce:      parseBool(get("CHEXUM_FORCE")),
 
-		HashiLogFile: get("HASHI_LOG_FILE"),
-		HashiLogJSON: get("HASHI_LOG_JSON"),
+		ChexumLogFile: get("CHEXUM_LOG_FILE"),
+		ChexumLogJSON: get("CHEXUM_LOG_JSON"),
 
-		HashiHelp:    parseBool(get("HASHI_HELP")),
-		HashiVersion: parseBool(get("HASHI_VERSION")),
+		ChexumHelp:    parseBool(get("CHEXUM_HELP")),
+		ChexumVersion: parseBool(get("CHEXUM_VERSION")),
 
-		HashiJobs:           parseInt(get("HASHI_JOBS")),
-		HashiBlacklistFiles: get("HASHI_BLACKLIST_FILES"),
-		HashiBlacklistDirs:  get("HASHI_BLACKLIST_DIRS"),
-		HashiWhitelistFiles: get("HASHI_WHITELIST_FILES"),
-		HashiWhitelistDirs:  get("HASHI_WHITELIST_DIRS"),
+		ChexumJobs:           parseInt(get("CHEXUM_JOBS")),
+		ChexumBlacklistFiles: get("CHEXUM_BLACKLIST_FILES"),
+		ChexumBlacklistDirs:  get("CHEXUM_BLACKLIST_DIRS"),
+		ChexumWhitelistFiles: get("CHEXUM_WHITELIST_FILES"),
+		ChexumWhitelistDirs:  get("CHEXUM_WHITELIST_DIRS"),
 	}
 
 	return env
@@ -121,92 +123,98 @@ func (env *EnvConfig) ApplyEnvConfig(cfg *Config, flagSet *pflag.FlagSet) {
 }
 
 func (env *EnvConfig) applyBasicEnvConfig(cfg *Config, flagSet *pflag.FlagSet) {
-	if !flagSet.Changed("algorithm") && env.HashiAlgorithm != "" {
-		cfg.Algorithm = env.HashiAlgorithm
+	if !flagSet.Changed("algorithm") && env.ChexumAlgorithm != "" {
+		cfg.Algorithm = env.ChexumAlgorithm
 	}
-	if !flagSet.Changed("dry-run") && env.HashiDryRun {
-		cfg.DryRun = env.HashiDryRun
+	if !flagSet.Changed("dry-run") && env.ChexumDryRun {
+		cfg.DryRun = env.ChexumDryRun
 	}
-	if !flagSet.Changed("recursive") && env.HashiRecursive {
-		cfg.Recursive = env.HashiRecursive
+	if !flagSet.Changed("recursive") && env.ChexumRecursive {
+		cfg.Recursive = env.ChexumRecursive
 	}
-	if !flagSet.Changed("hidden") && env.HashiHidden {
-		cfg.Hidden = env.HashiHidden
+	if !flagSet.Changed("hidden") && env.ChexumHidden {
+		cfg.Hidden = env.ChexumHidden
 	}
-	if !flagSet.Changed("verbose") && env.HashiVerbose {
-		cfg.Verbose = env.HashiVerbose
+	if !flagSet.Changed("verbose") && env.ChexumVerbose {
+		cfg.Verbose = env.ChexumVerbose
 	}
-	if !flagSet.Changed("quiet") && env.HashiQuiet {
-		cfg.Quiet = env.HashiQuiet
+	if !flagSet.Changed("quiet") && env.ChexumQuiet {
+		cfg.Quiet = env.ChexumQuiet
 	}
-	if !flagSet.Changed("bool") && env.HashiBool {
-		cfg.Bool = env.HashiBool
+	if !flagSet.Changed("bool") && env.ChexumBool {
+		cfg.Bool = env.ChexumBool
 	}
-	if !flagSet.Changed("preserve-order") && env.HashiPreserveOrder {
-		cfg.PreserveOrder = env.HashiPreserveOrder
+	if !flagSet.Changed("preserve-order") && env.ChexumPreserveOrder {
+		cfg.PreserveOrder = env.ChexumPreserveOrder
 	}
-	if !flagSet.Changed("match-required") && env.HashiMatchRequired {
-		cfg.MatchRequired = env.HashiMatchRequired
+	if !flagSet.Changed("match-required") && env.ChexumMatchRequired {
+		cfg.MatchRequired = env.ChexumMatchRequired
 	}
-	if !flagSet.Changed("manifest") && env.HashiManifest != "" {
-		cfg.Manifest = env.HashiManifest
+	if !flagSet.Changed("any-match") && env.ChexumAnyMatch {
+		cfg.AnyMatch = env.ChexumAnyMatch
 	}
-	if !flagSet.Changed("only-changed") && env.HashiOnlyChanged {
-		cfg.OnlyChanged = env.HashiOnlyChanged
+	if !flagSet.Changed("all-match") && env.ChexumAllMatch {
+		cfg.AllMatch = env.ChexumAllMatch
 	}
-	if !flagSet.Changed("help") && env.HashiHelp {
-		cfg.ShowHelp = env.HashiHelp
+	if !flagSet.Changed("manifest") && env.ChexumManifest != "" {
+		cfg.Manifest = env.ChexumManifest
 	}
-	if !flagSet.Changed("version") && env.HashiVersion {
-		cfg.ShowVersion = env.HashiVersion
+	if !flagSet.Changed("only-changed") && env.ChexumOnlyChanged {
+		cfg.OnlyChanged = env.ChexumOnlyChanged
 	}
-	if !flagSet.Changed("jobs") && env.HashiJobs != 0 {
-		cfg.Jobs = env.HashiJobs
+	if !flagSet.Changed("help") && env.ChexumHelp {
+		cfg.ShowHelp = env.ChexumHelp
+	}
+	if !flagSet.Changed("version") && env.ChexumVersion {
+		cfg.ShowVersion = env.ChexumVersion
+	}
+	if !flagSet.Changed("jobs") && env.ChexumJobs != 0 {
+		cfg.Jobs = env.ChexumJobs
 	}
 }
 
 func (env *EnvConfig) applyOutputEnvConfig(cfg *Config, flagSet *pflag.FlagSet) {
-	if !flagSet.Changed("format") && env.HashiOutputFormat != "" {
-		cfg.OutputFormat = env.HashiOutputFormat
+	if !flagSet.Changed("format") && env.ChexumOutputFormat != "" {
+		cfg.OutputFormat = env.ChexumOutputFormat
 	}
-	if !flagSet.Changed("output") && env.HashiOutputFile != "" {
-		cfg.OutputFile = env.HashiOutputFile
+	if !flagSet.Changed("output") && env.ChexumOutputFile != "" {
+		cfg.OutputFile = env.ChexumOutputFile
 	}
-	if !flagSet.Changed("append") && env.HashiAppend {
-		cfg.Append = env.HashiAppend
+	if !flagSet.Changed("append") && env.ChexumAppend {
+		cfg.Append = env.ChexumAppend
 	}
-	if !flagSet.Changed("force") && env.HashiForce {
-		cfg.Force = env.HashiForce
+	if !flagSet.Changed("force") && env.ChexumForce {
+		cfg.Force = env.ChexumForce
 	}
-	if !flagSet.Changed("log-file") && env.HashiLogFile != "" {
-		cfg.LogFile = env.HashiLogFile
+	if !flagSet.Changed("log-file") && env.ChexumLogFile != "" {
+		cfg.LogFile = env.ChexumLogFile
 	}
-	if !flagSet.Changed("log-json") && env.HashiLogJSON != "" {
-		cfg.LogJSON = env.HashiLogJSON
+	if !flagSet.Changed("log-json") && env.ChexumLogJSON != "" {
+		cfg.LogJSON = env.ChexumLogJSON
 	}
-	if !flagSet.Changed("output-manifest") && env.HashiOutputManifest != "" {
-		cfg.OutputManifest = env.HashiOutputManifest
+	if !flagSet.Changed("output-manifest") && env.ChexumOutputManifest != "" {
+		cfg.OutputManifest = env.ChexumOutputManifest
 	}
 }
 
 func (env *EnvConfig) applyBlacklistEnvConfig(cfg *Config) {
-	if env.HashiBlacklistFiles != "" {
-		patterns := parseCommaSeparated(env.HashiBlacklistFiles)
+	if env.ChexumBlacklistFiles != "" {
+		patterns := parseCommaSeparated(env.ChexumBlacklistFiles)
 		cfg.BlacklistFiles = append(cfg.BlacklistFiles, patterns...)
 	}
-	if env.HashiBlacklistDirs != "" {
-		patterns := parseCommaSeparated(env.HashiBlacklistDirs)
+	if env.ChexumBlacklistDirs != "" {
+		patterns := parseCommaSeparated(env.ChexumBlacklistDirs)
 		cfg.BlacklistDirs = append(cfg.BlacklistDirs, patterns...)
 	}
 }
 
 func (env *EnvConfig) applyWhitelistEnvConfig(cfg *Config) {
-	if env.HashiWhitelistFiles != "" {
-		patterns := parseCommaSeparated(env.HashiWhitelistFiles)
+	if env.ChexumWhitelistFiles != "" {
+		patterns := parseCommaSeparated(env.ChexumWhitelistFiles)
 		cfg.WhitelistFiles = append(cfg.WhitelistFiles, patterns...)
 	}
-	if env.HashiWhitelistDirs != "" {
-		patterns := parseCommaSeparated(env.HashiWhitelistDirs)
+	if env.ChexumWhitelistDirs != "" {
+		patterns := parseCommaSeparated(env.ChexumWhitelistDirs)
 		cfg.WhitelistDirs = append(cfg.WhitelistDirs, patterns...)
 	}
 }

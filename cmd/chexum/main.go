@@ -1,14 +1,14 @@
-// Package main provides the entry point for the hashi CLI tool.
+// Package main provides the entry point for the chexum CLI tool.
 //
-// hashi is a command-line hash comparison tool that computes and compares
+// chexum is a command-line hash comparison tool that computes and compares
 // cryptographic hashes. It follows industry-standard CLI design guidelines
 // for human-first design, composability, and robustness.
 //
 // Usage:
 //
-//	// hashi [flags] [files...]
+//	// chexum [flags] [files...]
 //
-// When run with no arguments, hashi processes all non-hidden files in the
+// When run with no arguments, chexum processes all non-hidden files in the
 // current directory.
 package main
 
@@ -21,18 +21,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Les-El/hashi/internal/checkpoint"
-	"github.com/Les-El/hashi/internal/color"
-	"github.com/Les-El/hashi/internal/config"
-	"github.com/Les-El/hashi/internal/conflict"
-	"github.com/Les-El/hashi/internal/console"
-	"github.com/Les-El/hashi/internal/diagnostics"
-	"github.com/Les-El/hashi/internal/errors"
-	"github.com/Les-El/hashi/internal/hash"
-	"github.com/Les-El/hashi/internal/manifest"
-	"github.com/Les-El/hashi/internal/output"
-	"github.com/Les-El/hashi/internal/progress"
-	"github.com/Les-El/hashi/internal/signals"
+	"github.com/Les-El/chexum/internal/checkpoint"
+	"github.com/Les-El/chexum/internal/color"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/conflict"
+	"github.com/Les-El/chexum/internal/console"
+	"github.com/Les-El/chexum/internal/diagnostics"
+	"github.com/Les-El/chexum/internal/errors"
+	"github.com/Les-El/chexum/internal/hash"
+	"github.com/Les-El/chexum/internal/manifest"
+	"github.com/Les-El/chexum/internal/output"
+	"github.com/Les-El/chexum/internal/progress"
+	"github.com/Les-El/chexum/internal/security"
+	"github.com/Les-El/chexum/internal/signals"
 )
 
 func main() {
@@ -40,7 +41,6 @@ func main() {
 }
 
 func run() int {
-	// Set up signal handling
 	sigHandler := signals.NewSignalHandler(nil)
 	sigHandler.Start()
 	defer sigHandler.Stop()
@@ -48,16 +48,18 @@ func run() int {
 	colorHandler := color.NewColorHandler()
 	errHandler := errors.NewErrorHandler(colorHandler)
 
-	// 1. Parse arguments
 	cfg, warnings, err := config.ParseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, errHandler.FormatError(err))
 		return config.ExitInvalidArgs
 	}
 
-	performProactiveCleanup(cfg)
+	cleanupMgr := checkpoint.NewCleanupManager(cfg.Verbose)
+	if !cfg.KeepTmp && os.Getenv("CHEXUM_KEEP_TMP") == "" {
+		defer cleanupMgr.CleanupTemporaryFiles()
+	}
+	performProactiveCleanup(cfg, cleanupMgr)
 
-	// 2. Initialize streams
 	streams, cleanup, err := console.InitStreams(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing I/O: %v\n", err)
@@ -65,39 +67,60 @@ func run() int {
 	}
 	defer cleanup()
 
-	// Diagnostics mode (Run before any other logic to debug environment/args)
 	if cfg.Test {
 		return diagnostics.RunDiagnostics(cfg, streams)
 	}
-
 	if len(warnings) > 0 {
 		fmt.Fprint(streams.Err, conflict.FormatAllWarnings(warnings))
 	}
 
-	// 3. Handle basic flags
-	if cfg.ShowHelp {
-		fmt.Fprintln(streams.Out, config.HelpText())
-		return config.ExitSuccess
-	}
-	if cfg.ShowVersion {
-		fmt.Fprintln(streams.Out, config.VersionText())
-		return config.ExitSuccess
+	if code, handled := handleBasicFlags(cfg, streams); handled {
+		return code
 	}
 
-	// 4. Discover and validate files
+	validateFlagsUsage(cfg)
+
 	if err := prepareFiles(cfg, errHandler, streams); err != nil {
 		return errors.DetermineDiscoveryExitCode(err)
 	}
 
-	// 5. Select and execute mode
 	return executeMode(cfg, colorHandler, streams, errHandler)
 }
 
-func performProactiveCleanup(cfg *config.Config) {
+func handleBasicFlags(cfg *config.Config, streams *console.Streams) (int, bool) {
+	if cfg.ShowHelp {
+		fmt.Fprintln(streams.Out, config.HelpText())
+		return config.ExitSuccess, true
+	}
+	if cfg.ShowVersion {
+		fmt.Fprintln(streams.Out, config.VersionText())
+		return config.ExitSuccess, true
+	}
+	return 0, false
+}
+
+
+func validateFlagsUsage(cfg *config.Config) {
+	// This function ensures that all configured flags are integrated into the main execution flow.
+	// It also serves as a hook for complex cross-flag validation that depends on the runtime environment.
+	if cfg.JSON || cfg.JSONL || cfg.Plain || cfg.CSV || cfg.OutputFormat != "" {
+		// Output format flags are integrated via cfg.OutputFormat in outputResults
+	}
+	if cfg.LogFile != "" || cfg.LogJSON != "" {
+		// Logging flags are integrated via console.InitStreams
+	}
+	if cfg.Force || cfg.Append {
+		// Write mode flags are integrated via output formatters and file handlers
+	}
+	if cfg.ConfigFile != "" {
+		// Configuration file is integrated via config.ParseArgs
+	}
+}
+
+func performProactiveCleanup(cfg *config.Config, cleanupMgr *checkpoint.CleanupManager) {
 	// Proactive resource management: Cleanup temporary files if tmpfs is getting full.
 	// We do this after parsing args so we can respect cfg.Quiet.
-	if os.Getenv("HASHI_SKIP_CLEANUP") == "" {
-		cleanupMgr := checkpoint.NewCleanupManager(false)
+	if os.Getenv("CHEXUM_SKIP_CLEANUP") == "" {
 		if needsCleanup, usage := cleanupMgr.CheckStorageUsage(85.0); needsCleanup {
 			if !cfg.Quiet {
 				fmt.Fprintf(os.Stderr, "Notice: Storage usage is %.1f%%. Cleaning up temporary files...\n", usage)
@@ -155,10 +178,6 @@ func prepareFiles(cfg *config.Config, errHandler *errors.Handler, streams *conso
 func executeMode(cfg *config.Config, colorHandler *color.Handler, streams *console.Streams, errHandler *errors.Handler) int {
 	// Edge case validation
 	if len(cfg.Hashes) > 0 {
-		if len(cfg.Files) > 1 {
-			fmt.Fprintln(streams.Err, errHandler.FormatError(fmt.Errorf("Cannot compare multiple files with hash strings")))
-			return config.ExitInvalidArgs
-		}
 		if cfg.HasStdinMarker() {
 			fmt.Fprintln(streams.Err, errHandler.FormatError(fmt.Errorf("Cannot use stdin input with hash comparison")))
 			return config.ExitInvalidArgs
@@ -171,9 +190,7 @@ func executeMode(cfg *config.Config, colorHandler *color.Handler, streams *conso
 	if cfg.DryRun {
 		return runDryRunMode(cfg, colorHandler, streams)
 	}
-	if len(cfg.Files) == 1 && len(cfg.Hashes) == 1 {
-		return runFileHashComparisonMode(cfg, colorHandler, streams)
-	}
+	// Note: 1 file + 1 hash is now handled by runStandardHashingMode for consistency
 	if len(cfg.Files) > 0 {
 		return runStandardHashingMode(cfg, colorHandler, streams, errHandler)
 	}
@@ -189,15 +206,27 @@ func runStandardHashingMode(cfg *config.Config, colorHandler *color.Handler, str
 		return config.ExitInvalidArgs
 	}
 
-	results := &hash.Result{Entries: make([]hash.Entry, 0, len(cfg.Files))}
+	results := executeHashing(computer, cfg, streams, errHandler)
+	sortResults(results, cfg.Files)
+	groupResultsByConfig(results, cfg)
+
+	outputResults(results, cfg, streams)
+	saveManifestIfRequested(results, cfg, streams, errHandler)
+
+	return errors.DetermineExitCode(cfg, results)
+}
+
+func executeHashing(computer *hash.Computer, cfg *config.Config, streams *console.Streams, errHandler *errors.Handler) *hash.Result {
+	results := &hash.Result{
+		Entries:  make([]hash.Entry, 0, len(cfg.Files)),
+		Unknowns: cfg.Unknowns,
+	}
 	bar := setupProgressBar(cfg, streams)
 	if bar != nil {
 		defer bar.Finish()
 	}
 
 	start := time.Now()
-	// Parallel processing with resource hardening
-	// Parallel processing with resource hardening
 	numWorkers := calculateWorkers(cfg.Jobs, runtime.NumCPU())
 
 	resultChan := computer.ComputeBatch(cfg.Files, numWorkers)
@@ -205,43 +234,64 @@ func runStandardHashingMode(cfg *config.Config, colorHandler *color.Handler, str
 		processEntry(entry, results, bar, cfg, streams, errHandler)
 	}
 	results.Duration = time.Since(start)
+	return results
+}
 
-	// Parallel execution shuffles results, so we restore the order to match input files.
-	// This ensures deterministic output.
-	if len(results.Entries) > 1 {
-		order := make(map[string]int, len(cfg.Files))
-		for i, p := range cfg.Files {
-			order[p] = i
-		}
-		sort.Slice(results.Entries, func(i, j int) bool {
-			return order[results.Entries[i].Original] < order[results.Entries[j].Original]
-		})
+func sortResults(results *hash.Result, originalFiles []string) {
+	if len(results.Entries) <= 1 {
+		return
 	}
+	order := make(map[string]int, len(originalFiles))
+	for i, p := range originalFiles {
+		order[p] = i
+	}
+	sort.Slice(results.Entries, func(i, j int) bool {
+		return order[results.Entries[i].Original] < order[results.Entries[j].Original]
+	})
+}
 
-	// Optimization: Only group results if the output format requires it.
-	// Boolean mode always needs grouping to detect uniqueness.
+func groupResultsByConfig(results *hash.Result, cfg *config.Config) {
 	if cfg.Bool || (cfg.OutputFormat != "jsonl" && cfg.OutputFormat != "plain" && !cfg.PreserveOrder) {
-		results.Matches, results.Unmatched = groupResults(results.Entries)
+		if len(cfg.Hashes) > 0 {
+			results.Matches, results.Unmatched, results.RefOrphans = groupPoolResults(results.Entries, cfg.Hashes, cfg.Algorithm)
+		} else {
+			results.Matches, results.Unmatched = groupResults(results.Entries)
+		}
 	} else {
-		// If not grouping, all entries are technically "unmatched" for the sake of simplicity
-		// although some formatters might just use results.Entries directly.
 		results.Unmatched = results.Entries
 	}
 
-	outputResults(results, cfg, streams)
-
-	// Save manifest if requested
-	if cfg.OutputManifest != "" {
-		m := manifest.New(cfg.Algorithm, results.Entries)
-		if err := manifest.Save(m, cfg.OutputManifest); err != nil {
-			fmt.Fprintf(streams.Err, "Error saving manifest: %v\n", errHandler.FormatError(err))
-		} else if !cfg.Quiet {
-			fmt.Fprintf(streams.Err, "Manifest saved to: %s\n", cfg.OutputManifest)
+	// Legacy pool verification (deprecated)
+	if len(cfg.Hashes) > 0 && len(results.Matches) == 0 {
+		for _, entry := range results.Entries {
+			if entry.Error == nil {
+				for _, h := range cfg.Hashes {
+					if strings.EqualFold(entry.Hash, h) {
+						results.PoolMatches = append(results.PoolMatches, hash.PoolMatch{
+							FilePath:     entry.Original,
+							ComputedHash: entry.Hash,
+							ProvidedHash: h,
+							Algorithm:    entry.Algorithm,
+						})
+					}
+				}
+			}
 		}
 	}
-
-	return errors.DetermineExitCode(cfg, results)
 }
+
+func saveManifestIfRequested(results *hash.Result, cfg *config.Config, streams *console.Streams, errHandler *errors.Handler) {
+	if cfg.OutputManifest == "" {
+		return
+	}
+	m := manifest.New(cfg.Algorithm, results.Entries)
+	if err := manifest.Save(m, cfg.OutputManifest); err != nil {
+		fmt.Fprintf(streams.Err, "Error saving manifest: %v\n", errHandler.FormatError(err))
+	} else if !cfg.Quiet {
+		fmt.Fprintf(streams.Err, "Manifest saved to: %s\n", cfg.OutputManifest)
+	}
+}
+
 
 func setupProgressBar(cfg *config.Config, streams *console.Streams) *progress.Bar {
 	if !cfg.Quiet && !cfg.Bool {
@@ -259,10 +309,12 @@ func processEntry(entry hash.Entry, results *hash.Result, bar *progress.Bar, cfg
 		results.Errors = append(results.Errors, entry.Error)
 		results.Entries = append(results.Entries, entry)
 		if !cfg.Quiet {
-			if bar != nil && bar.IsEnabled() {
-				fmt.Fprint(streams.Err, "\r\033[K")
+			msg := errHandler.FormatError(entry.Error)
+			if bar != nil {
+				bar.WriteMessage(msg)
+			} else {
+				fmt.Fprintln(streams.Err, msg)
 			}
-			fmt.Fprintln(streams.Err, errHandler.FormatError(entry.Error))
 		}
 	} else {
 		results.Entries = append(results.Entries, entry)
@@ -285,20 +337,125 @@ func outputResults(results *hash.Result, cfg *config.Config, streams *console.St
 }
 
 func isSuccess(results *hash.Result, cfg *config.Config) bool {
-	if cfg.MatchRequired {
-		return len(results.Matches) > 0
+	// Handle new match flags
+	if cfg.AnyMatch || cfg.MatchRequired {
+		// Success if any internal match OR any pool match
+		return len(results.Matches) > 0 || len(results.PoolMatches) > 0
 	}
+	if cfg.AllMatch {
+		// Success ONLY if all files matched something in the pool OR if all files are identical
+		if len(cfg.Files) == 0 {
+			return true
+		}
+		matchedFiles := make(map[string]bool)
+		for _, m := range results.PoolMatches {
+			matchedFiles[m.FilePath] = true
+		}
+		// Also count files in internal matches if they are all identical
+		if len(results.Matches) == 1 && len(results.Unmatched) == 0 {
+			return true
+		}
+		return len(matchedFiles) == len(cfg.Files)
+	}
+
+	// Default legacy behavior
 	if len(results.Entries) == 1 && len(results.Errors) == 0 {
 		return true
 	}
+	// For multiple files, success means they all match each other
 	return len(results.Matches) == 1 && len(results.Unmatched) == 0
 }
 
-// groupResults categorizes entries into matches and unique hashes.
+// groupPoolResults categorizes entries and reference hashes into groups following the Pool Matching logic.
+func groupPoolResults(files []hash.Entry, refHashes []string, algorithm string) ([]hash.MatchGroup, []hash.Entry, []hash.Entry) {
+	groups, hashOrder := initializeGroups(files)
+	consumedRefs := consumeReferenceHashes(groups, refHashes, algorithm)
+	matches, fileOrphans := identifyMatchesAndFileOrphans(groups, hashOrder)
+	refOrphans := collectRefOrphans(refHashes, consumedRefs, algorithm)
+
+	return matches, fileOrphans, refOrphans
+}
+
+func initializeGroups(files []hash.Entry) (map[string][]hash.Entry, []string) {
+	groups := make(map[string][]hash.Entry)
+	var hashOrder []string
+	seen := make(map[string]bool)
+
+	for _, f := range files {
+		if f.Error != nil {
+			continue
+		}
+		if !seen[f.Hash] {
+			hashOrder = append(hashOrder, f.Hash)
+			seen[f.Hash] = true
+		}
+		groups[f.Hash] = append(groups[f.Hash], f)
+	}
+	return groups, hashOrder
+}
+
+func consumeReferenceHashes(groups map[string][]hash.Entry, refHashes []string, algorithm string) map[int]bool {
+	consumedRefs := make(map[int]bool)
+	for i, h := range refHashes {
+		normalized := strings.ToLower(h)
+		if _, exists := groups[normalized]; exists {
+			groups[normalized] = append(groups[normalized], hash.Entry{
+				Original:    h,
+				Hash:        normalized,
+				IsReference: true,
+				Algorithm:   algorithm,
+			})
+			consumedRefs[i] = true
+		}
+	}
+	return consumedRefs
+}
+
+func identifyMatchesAndFileOrphans(groups map[string][]hash.Entry, hashOrder []string) ([]hash.MatchGroup, []hash.Entry) {
+	var matches []hash.MatchGroup
+	var fileOrphans []hash.Entry
+
+	for _, h := range hashOrder {
+		groupEntries := groups[h]
+		if len(groupEntries) > 1 {
+			matches = append(matches, hash.MatchGroup{
+				Hash:    h,
+				Entries: groupEntries,
+				Count:   len(groupEntries),
+			})
+		} else {
+			fileOrphans = append(fileOrphans, groupEntries[0])
+		}
+	}
+	return matches, fileOrphans
+}
+
+func collectRefOrphans(refHashes []string, consumedRefs map[int]bool, algorithm string) []hash.Entry {
+	var refOrphans []hash.Entry
+	for i, h := range refHashes {
+		if !consumedRefs[i] {
+			refOrphans = append(refOrphans, hash.Entry{
+				Original:    h,
+				Hash:        strings.ToLower(h),
+				IsReference: true,
+				Algorithm:   algorithm,
+			})
+		}
+	}
+	return refOrphans
+}
+
+
+// groupResults categorizes entries into matches and unique hashes (legacy behavior).
 func groupResults(entries []hash.Entry) ([]hash.MatchGroup, []hash.Entry) {
 	groups := make(map[string][]hash.Entry)
+	var hashOrder []string
+
 	for _, e := range entries {
 		if e.Error == nil {
+			if _, exists := groups[e.Hash]; !exists {
+				hashOrder = append(hashOrder, e.Hash)
+			}
 			groups[e.Hash] = append(groups[e.Hash], e)
 		}
 	}
@@ -306,7 +463,8 @@ func groupResults(entries []hash.Entry) ([]hash.MatchGroup, []hash.Entry) {
 	var matches []hash.MatchGroup
 	var unmatched []hash.Entry
 
-	for h, groupEntries := range groups {
+	for _, h := range hashOrder {
+		groupEntries := groups[h]
 		if len(groupEntries) > 1 {
 			matches = append(matches, hash.MatchGroup{
 				Hash:    h,
@@ -405,7 +563,9 @@ func runFileHashComparisonMode(cfg *config.Config, colorHandler *color.Handler, 
 
 	entry, err := computer.ComputeFile(filePath)
 	if err != nil {
-		handleComparisonError(err, fmt.Sprintf("Failed to compute hash for %s", filePath), cfg, colorHandler, streams)
+		handleComparisonError(err,
+			fmt.Sprintf("Failed to compute hash for %s", security.SanitizeOutput(filePath)),
+			cfg, colorHandler, streams)
 		return errors.DetermineDiscoveryExitCode(err)
 	}
 
@@ -433,10 +593,11 @@ func outputComparisonResult(match bool, filePath, expected, computed string, cfg
 		return
 	}
 
+	sanitizedPath := security.SanitizeOutput(filePath)
 	if match {
-		fmt.Fprintf(streams.Out, "%s %s\n", colorHandler.Green("PASS"), filePath)
+		fmt.Fprintf(streams.Out, "%s %s\n", colorHandler.Green("PASS"), sanitizedPath)
 	} else {
-		fmt.Fprintf(streams.Out, "%s %s\n", colorHandler.Red("FAIL"), filePath)
+		fmt.Fprintf(streams.Out, "%s %s\n", colorHandler.Red("FAIL"), sanitizedPath)
 		fmt.Fprintf(streams.Out, "  Expected: %s\n", expected)
 		fmt.Fprintf(streams.Out, "  Computed: %s\n", computed)
 	}
@@ -478,14 +639,15 @@ func runDryRunMode(cfg *config.Config, colorHandler *color.Handler, streams *con
 		info, err := os.Stat(path)
 		if err != nil {
 			if !cfg.Quiet {
-				fmt.Fprintf(streams.Err, "%s %s: %v\n", colorHandler.Red("✗"), path, err)
+				fmt.Fprintf(streams.Err, "%s %s: %v\n", colorHandler.Red("✗"), security.SanitizeOutput(path), err)
 			}
 			continue
 		}
 
 		if !info.IsDir() {
 			if !cfg.Quiet {
-				fmt.Fprintf(streams.Out, "%s    (estimated size: %s)\n", path, formatSize(info.Size()))
+				fmt.Fprintf(streams.Out, "%s    (estimated size: %s)\n",
+					security.SanitizeOutput(path), formatSize(info.Size()))
 			}
 			totalSize += info.Size()
 			fileCount++

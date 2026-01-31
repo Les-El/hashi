@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -53,30 +54,46 @@ func NewOrganizer(rootDir string) *Organizer {
 func (o *Organizer) CreateSnapshot(name string) error {
 	activeDir := filepath.Join(o.rootDir, "active")
 	latestDir := filepath.Join(activeDir, "latest")
+	snapshotsBaseDir := filepath.Join(activeDir, "snapshots")
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	if name == "" {
 		name = "snapshot_" + timestamp
 	}
 
-	snapshotDir := filepath.Join(activeDir, "snapshots", name)
+	// Security: Sanitize name to prevent path injection
+	cleanName := filepath.Base(name)
+	snapshotDir := filepath.Join(snapshotsBaseDir, cleanName)
+
+	// Security: Double check that we are still within snapshotsBaseDir
+	if rel, err := filepath.Rel(snapshotsBaseDir, snapshotDir); err != nil || strings.HasPrefix(rel, "..") {
+		return fmt.Errorf("invalid snapshot name: %s", name)
+	}
+
+	// Verify latest directory exists and is not empty
+	if _, err := os.Stat(latestDir); err != nil {
+		return fmt.Errorf("cannot create snapshot: latest findings directory missing: %w", err)
+	}
 
 	if err := os.MkdirAll(snapshotDir, 0755); err != nil {
 		return fmt.Errorf("failed to create snapshot directory: %w", err)
 	}
 
 	// Move files from latest to the new snapshot
-	if _, err := os.Stat(latestDir); err == nil {
-		entries, err := os.ReadDir(latestDir)
-		if err != nil {
+	entries, err := os.ReadDir(latestDir)
+	if err != nil {
+		return err
+	}
+	if len(entries) == 0 {
+		return fmt.Errorf("cannot create snapshot: latest findings directory is empty")
+	}
+
+	for _, entry := range entries {
+		oldPath := filepath.Join(latestDir, entry.Name())
+		newPath := filepath.Join(snapshotDir, entry.Name())
+		// Logic: Use copy instead of rename to avoid emptying latest/
+		if err := o.copyFile(oldPath, newPath); err != nil {
 			return err
-		}
-		for _, entry := range entries {
-			oldPath := filepath.Join(latestDir, entry.Name())
-			newPath := filepath.Join(snapshotDir, entry.Name())
-			if err := os.Rename(oldPath, newPath); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -161,8 +178,44 @@ func (o *Organizer) GetActiveSnapshots() ([]SnapshotInfo, error) {
 	return infos, nil
 }
 
-// CleanupArchives placeholder (implementation depends on retention policy).
+// CleanupArchives removes archive directories older than the specified retention period.
 func (o *Organizer) CleanupArchives(retentionMonths int) error {
-	// Implementation would walk o.rootDir/archive and remove old monthly directories.
+	archiveDir := filepath.Join(o.rootDir, "archive")
+	entries, err := os.ReadDir(archiveDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	cutoff := time.Now().AddDate(0, -retentionMonths, 0)
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Monthly directories are named YYYY-MM
+		t, err := time.Parse("2006-01", entry.Name())
+		if err != nil {
+			continue
+		}
+
+		if t.Before(cutoff) {
+			if err := os.RemoveAll(filepath.Join(archiveDir, entry.Name())); err != nil {
+				continue
+			}
+		}
+	}
 	return nil
+}
+
+// copyFile performs a simple file copy.
+func (o *Organizer) copyFile(src, dst string) error {
+	input, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, input, 0644)
 }

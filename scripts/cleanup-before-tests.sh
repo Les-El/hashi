@@ -11,7 +11,7 @@ TMP_DIR="${TMPDIR:-/tmp}"
 # Default patterns to clean (relative to TMP_DIR)
 PATTERNS=(
     "go-build*"
-    "hashi-*"
+    "chexum-*"
     "checkpoint-*"
     "test-*"
 )

@@ -2,13 +2,13 @@ package errors
 
 import (
 	"errors"
-	"github.com/Les-El/hashi/internal/color"
+	"github.com/Les-El/chexum/internal/color"
 	"os"
 	"strings"
 	"testing"
 )
 
-func TestErrorHandler_FormatError_HashiErrorVerbose(t *testing.T) {
+func TestErrorHandler_FormatError_ChexumErrorVerbose(t *testing.T) {
 	colorHandler := color.NewColorHandler()
 	colorHandler.SetEnabled(false)
 	h := NewErrorHandler(colorHandler)
@@ -37,9 +37,9 @@ func TestSuggestFix_StandardError(t *testing.T) {
 		t.Error("Expected suggestion for standard error")
 	}
 
-	hashiErr := NewConfigError("msg")
-	if h.SuggestFix(hashiErr) != hashiErr.Suggestion {
-		t.Error("Expected suggestion from hashiErr")
+	chexumErr := NewConfigError("msg")
+	if h.SuggestFix(chexumErr) != chexumErr.Suggestion {
+		t.Error("Expected suggestion from chexumErr")
 	}
 }
 

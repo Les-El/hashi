@@ -1,4 +1,4 @@
-# Hashi2 Developer Guidance
+# Chexum Developer Guidance
 
 ## Coding Standards
 

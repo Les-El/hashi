@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/security"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 func TestValidateOutputPath(t *testing.T) {
@@ -14,7 +14,7 @@ func TestValidateOutputPath(t *testing.T) {
 }
 
 func testAllowedExtensions(t *testing.T) {
-	paths := []string{"output.txt", "data.json", "report.csv", "OUTPUT.TXT", "logs/out.txt"}
+	paths := []string{"output.txt", "data.json", "data.jsonl", "report.csv", "output.log", "OUTPUT.TXT", "logs/out.txt"}
 	cfg := DefaultConfig()
 	for _, p := range paths {
 		if err := validateOutputPath(p, cfg); err != nil {
@@ -42,7 +42,7 @@ func testBlacklistedPaths(t *testing.T) {
 	}{
 		{"id_rsa.txt", "security pattern"},
 		{".git/config.txt", "security pattern"},
-		{".hashi/out.txt", "configuration directory"},
+		{".chexum/out.txt", "configuration directory"},
 	}
 	for _, tt := range tests {
 		err := validateOutputPath(tt.path, cfg)
@@ -69,7 +69,7 @@ var validateConfigSecurityTests = []struct {
 	},
 	{
 		name:       "unsafe output file",
-		outputFile: ".hashi.toml",
+		outputFile: ".chexum.toml",
 		shouldErr:  true,
 		errMsg:     "output file",
 	},
@@ -81,7 +81,7 @@ var validateConfigSecurityTests = []struct {
 	},
 	{
 		name:      "unsafe JSON log file",
-		logJSON:   ".hashi/debug.json",
+		logJSON:   ".chexum/debug.json",
 		shouldErr: true,
 		errMsg:    "JSON log file",
 	},
@@ -147,7 +147,7 @@ func testValidateFileName(t *testing.T) {
 
 		{".env", true},
 
-		{".hashi.toml", true},
+		{".chexum.toml", true},
 	}
 
 	for _, tt := range tests {

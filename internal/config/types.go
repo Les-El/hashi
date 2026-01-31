@@ -7,7 +7,7 @@ import (
 // Exit codes for scripting support
 const (
 	ExitSuccess        = 0   // All files processed successfully
-	ExitNoMatches      = 1   // No matches found (with --match-required)
+	ExitNoMatches      = 1   // No matches found (with --any-match or --all-match)
 	ExitPartialFailure = 2   // Some files failed to process
 	ExitInvalidArgs    = 3   // Invalid arguments or flags
 	ExitFileNotFound   = 4   // One or more files not found
@@ -20,17 +20,17 @@ type ConfigCommandError struct{}
 
 // Error returns the formatted error message.
 func (e *ConfigCommandError) Error() string {
-	return `Error: hashi does not support config subcommands
+	return `Error: chexum does not support config subcommands
 
 Configuration must be done by manually editing config files.
 
-Hashi auto-loads config from these standard locations:
-  • .hashi.toml (project-specific)
-  • hashi/config.toml (in XDG config directory)
-  • .hashi/config.toml (traditional dotfile)
+Chexum auto-loads config from these standard locations:
+  • .chexum.toml (project-specific)
+  • chexum/config.toml (in XDG config directory)
+  • .chexum/config.toml (traditional dotfile)
 
 For configuration documentation and examples, see:
-  https://github.com/[your-repo]/hashi#configuration`
+  https://github.com/[your-repo]/chexum#configuration`
 }
 
 // ExitCode returns the appropriate exit code for the error.
@@ -40,52 +40,55 @@ func (e *ConfigCommandError) ExitCode() int {
 
 // EnvConfig holds environment variable configuration.
 type EnvConfig struct {
-	NoColor     bool   // NO_COLOR environment variable
-	Debug       bool   // DEBUG environment variable
-	TmpDir      string // TMPDIR environment variable
-	Home        string // HOME environment variable
-	ConfigHome  string // XDG_CONFIG_HOME environment variable
-	HashiConfig string // HASHI_CONFIG environment variable
+	NoColor      bool   // NO_COLOR environment variable
+	Debug        bool   // DEBUG environment variable
+	TmpDir       string // TMPDIR environment variable
+	Home         string // HOME environment variable
+	ConfigHome   string // XDG_CONFIG_HOME environment variable
+	ChexumConfig string // CHEXUM_CONFIG environment variable
 
-	HashiAlgorithm      string // HASHI_ALGORITHM
-	HashiOutputFormat   string // HASHI_OUTPUT_FORMAT
-	HashiDryRun         bool   // HASHI_DRY_RUN
-	HashiRecursive      bool   // HASHI_RECURSIVE
-	HashiHidden         bool   // HASHI_HIDDEN
-	HashiVerbose        bool   // HASHI_VERBOSE
-	HashiQuiet          bool   // HASHI_QUIET
-	HashiBool           bool   // HASHI_BOOL
-	HashiPreserveOrder  bool   // HASHI_PRESERVE_ORDER
-	HashiMatchRequired  bool   // HASHI_MATCH_REQUIRED
-	HashiManifest       string // HASHI_MANIFEST
-	HashiOnlyChanged    bool   // HASHI_ONLY_CHANGED
-	HashiOutputManifest string // HASHI_OUTPUT_MANIFEST
+	ChexumAlgorithm      string // CHEXUM_ALGORITHM
+	ChexumOutputFormat   string // CHEXUM_OUTPUT_FORMAT
+	ChexumDryRun         bool   // CHEXUM_DRY_RUN
+	ChexumRecursive      bool   // CHEXUM_RECURSIVE
+	ChexumHidden         bool   // CHEXUM_HIDDEN
+	ChexumVerbose        bool   // CHEXUM_VERBOSE
+	ChexumQuiet          bool   // CHEXUM_QUIET
+	ChexumBool           bool   // CHEXUM_BOOL
+	ChexumPreserveOrder  bool   // CHEXUM_PRESERVE_ORDER
+	ChexumMatchRequired  bool   // CHEXUM_MATCH_REQUIRED (deprecated, use CHEXUM_ANY_MATCH)
+	ChexumAnyMatch       bool   // CHEXUM_ANY_MATCH
+	ChexumAllMatch       bool   // CHEXUM_ALL_MATCH
+	ChexumManifest       string // CHEXUM_MANIFEST
+	ChexumOnlyChanged    bool   // CHEXUM_ONLY_CHANGED
+	ChexumOutputManifest string // CHEXUM_OUTPUT_MANIFEST
 
-	HashiOutputFile string // HASHI_OUTPUT_FILE
-	HashiAppend     bool   // HASHI_APPEND
-	HashiForce      bool   // HASHI_FORCE
+	ChexumOutputFile string // CHEXUM_OUTPUT_FILE
+	ChexumAppend     bool   // CHEXUM_APPEND
+	ChexumForce      bool   // CHEXUM_FORCE
 
-	HashiLogFile string // HASHI_LOG_FILE
-	HashiLogJSON string // HASHI_LOG_JSON
+	ChexumLogFile string // CHEXUM_LOG_FILE
+	ChexumLogJSON string // CHEXUM_LOG_JSON
 
-	HashiHelp    bool // HASHI_HELP
-	HashiVersion bool // HASHI_VERSION
+	ChexumHelp    bool // CHEXUM_HELP
+	ChexumVersion bool // CHEXUM_VERSION
 
-	HashiJobs int // HASHI_JOBS
+	ChexumJobs int // CHEXUM_JOBS
 
-	HashiBlacklistFiles string // HASHI_BLACKLIST_FILES
-	HashiBlacklistDirs  string // HASHI_BLACKLIST_DIRS
-	HashiWhitelistFiles string // HASHI_WHITELIST_FILES
-	HashiWhitelistDirs  string // HASHI_WHITELIST_DIRS
+	ChexumBlacklistFiles string // CHEXUM_BLACKLIST_FILES
+	ChexumBlacklistDirs  string // CHEXUM_BLACKLIST_DIRS
+	ChexumWhitelistFiles string // CHEXUM_WHITELIST_FILES
+	ChexumWhitelistDirs  string // CHEXUM_WHITELIST_DIRS
 }
 
-// Config holds all configuration options for hashi.
+// Config holds all configuration options for chexum.
 type Config struct {
 	Input       InputConfig
 	Output      OutputConfig
 	Processing  ProcessingConfig
 	Incremental IncrementalConfig
 	Security    SecurityConfig
+	Discovery   DiscoveryConfig
 
 	ConfigFile  string
 	ShowHelp    bool
@@ -107,11 +110,15 @@ type Config struct {
 	Test          bool
 
 	MatchRequired bool
+	AnyMatch      bool
+	AllMatch      bool
+	KeepTmp       bool
 
 	OutputFormat string
 	JSON         bool
 	JSONL        bool
 	Plain        bool
+	CSV          bool
 	OutputFile   string
 	Append       bool
 	Force        bool
@@ -134,6 +141,8 @@ type Config struct {
 	BlacklistDirs  []string
 	WhitelistFiles []string
 	WhitelistDirs  []string
+
+	Unknowns []string
 }
 
 // InputConfig holds file discovery and filtering options.
@@ -188,6 +197,13 @@ type SecurityConfig struct {
 	BlacklistDirs  []string
 	WhitelistFiles []string
 	WhitelistDirs  []string
+}
+
+// DiscoveryConfig holds paths used by analysis engines.
+type DiscoveryConfig struct {
+	InternalPath string
+	MainEntry    string
+	DocsPath     string
 }
 
 // ValidatedConfig is a marker type for a configuration that has been validated.

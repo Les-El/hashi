@@ -82,7 +82,7 @@ func TestCIEngine_VerifyTestCompleteness(t *testing.T) {
 
 func TestCIEngine_CheckCoverage(t *testing.T) {
 	engine := NewCIEngine(85.0)
-	mockOutput := "github.com/Les-El/hashi/internal/config	coverage: 79.1% of statements"
+	mockOutput := "github.com/Les-El/chexum/internal/config	coverage: 79.1% of statements"
 	issues := engine.checkCoverage(mockOutput, "internal/config")
 	if len(issues) != 1 {
 		t.Errorf("expected 1 issue, got %d", len(issues))

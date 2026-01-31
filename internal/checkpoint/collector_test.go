@@ -2,6 +2,8 @@ package checkpoint
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -83,6 +85,21 @@ func TestRun(t *testing.T) {
 	}
 	if len(runner.collector.issues) != 1 {
 		t.Errorf("expected 1 issue, got %d", len(runner.collector.issues))
+	}
+}
+
+func TestRun_Error(t *testing.T) {
+	engine1 := &MockAnalysisEngine{
+		name: "ErrorEngine",
+		err:  fmt.Errorf("boom"),
+	}
+	runner := NewRunner([]AnalysisEngine{engine1})
+	err := runner.Run(context.Background(), ".")
+	if err == nil {
+		t.Error("expected error from Run, got nil")
+	}
+	if !strings.Contains(err.Error(), "boom") {
+		t.Errorf("expected error to contain 'boom', got %v", err)
 	}
 }
 

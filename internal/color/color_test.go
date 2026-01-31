@@ -1,4 +1,4 @@
-// Package color provides TTY detection and color handling for hashi.
+// Package color provides TTY detection and color handling for chexum.
 package color
 
 import (

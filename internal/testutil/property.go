@@ -28,7 +28,7 @@ func RunPropertyTest(t *testing.T, feature string, propertyID int, description s
 	}
 }
 
-// CheckProperty is a helper that wraps quick.Check with default hashi project standards.
+// CheckProperty is a helper that wraps quick.Check with default chexum project standards.
 func CheckProperty(t *testing.T, f interface{}) {
 	t.Helper()
 	config := &quick.Config{MaxCount: 100}

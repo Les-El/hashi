@@ -196,7 +196,43 @@ func (c *CodeAnalyzer) scanTechnicalDebt(f *ast.File) []Issue {
 func (c *CodeAnalyzer) scanSecurityIssues(f *ast.File) []Issue {
 	var issues []Issue
 
-	// Track imports to handle aliases
+	reviewed := c.extractReviewedIssues(f)
+	importMap := c.extractImports(f)
+
+	ast.Inspect(f, func(n ast.Node) bool {
+		// Check for unsafe import (even if aliased)
+		if imp, ok := n.(*ast.ImportSpec); ok {
+			if issue := c.checkUnsafeImport(imp, reviewed); issue != nil {
+				issues = append(issues, *issue)
+			}
+		}
+
+		// Check for dangerous function calls
+		if call, ok := n.(*ast.CallExpr); ok {
+			issues = append(issues, c.checkDangerousCall(call, importMap, reviewed)...)
+		}
+		return true
+	})
+	return issues
+}
+
+func (c *CodeAnalyzer) extractReviewedIssues(f *ast.File) map[string]bool {
+	reviewed := make(map[string]bool)
+	for _, cg := range f.Comments {
+		for _, comment := range cg.List {
+			if strings.Contains(comment.Text, "Reviewed: ") {
+				parts := strings.Split(comment.Text, "Reviewed: ")
+				if len(parts) > 1 {
+					issueID := strings.Fields(parts[1])[0]
+					reviewed[issueID] = true
+				}
+			}
+		}
+	}
+	return reviewed
+}
+
+func (c *CodeAnalyzer) extractImports(f *ast.File) map[string]string {
 	importMap := make(map[string]string)
 	for _, imp := range f.Imports {
 		pkgPath := strings.Trim(imp.Path.Value, "\"")
@@ -206,92 +242,114 @@ func (c *CodeAnalyzer) scanSecurityIssues(f *ast.File) []Issue {
 		}
 		importMap[pkgName] = pkgPath
 	}
+	return importMap
+}
 
-	ast.Inspect(f, func(n ast.Node) bool {
-		// Check for unsafe import (even if aliased)
-		if imp, ok := n.(*ast.ImportSpec); ok {
-			if imp.Path != nil && imp.Path.Value == "\"unsafe\"" {
-				issues = append(issues, Issue{
-					ID:          "SECURITY-UNSAFE",
-					Category:    Security,
-					Severity:    Medium,
-					Title:       "Usage of 'unsafe' package",
-					Description: "The 'unsafe' package is used in this file. Unsafe pointer manipulation can lead to memory corruption.",
-					Location:    c.fset.Position(imp.Pos()).String(),
-					Suggestion:  "Verify if 'unsafe' is absolutely necessary. Prefer safe Go alternatives.",
-					Effort:      MediumEffort,
-					Priority:    P2,
-					Status:      Pending,
-				})
+func (c *CodeAnalyzer) checkUnsafeImport(imp *ast.ImportSpec, reviewed map[string]bool) *Issue {
+	if imp.Path != nil && imp.Path.Value == "\"unsafe\"" {
+		if !reviewed["SECURITY-UNSAFE"] {
+			return &Issue{
+				ID:          "SECURITY-UNSAFE",
+				Category:    Security,
+				Severity:    Medium,
+				Title:       "Usage of 'unsafe' package",
+				Description: "The 'unsafe' package is used in this file. Unsafe pointer manipulation can lead to memory corruption.",
+				Location:    c.fset.Position(imp.Pos()).String(),
+				Suggestion:  "Verify if 'unsafe' is absolutely necessary. Prefer safe Go alternatives.",
+				Effort:      MediumEffort,
+				Priority:    P2,
+				Status:      Pending,
 			}
 		}
+	}
+	return nil
+}
 
-		// Check for dangerous function calls
-		if call, ok := n.(*ast.CallExpr); ok {
-			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-				pkgAlias := ""
-				if x, ok := sel.X.(*ast.Ident); ok {
-					pkgAlias = x.Name
-				}
+func (c *CodeAnalyzer) checkDangerousCall(call *ast.CallExpr, importMap map[string]string, reviewed map[string]bool) []Issue {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return nil
+	}
 
-				realPkg := importMap[pkgAlias]
-				funcName := sel.Sel.Name
+	pkgAlias := ""
+	if x, ok := sel.X.(*ast.Ident); ok {
+		pkgAlias = x.Name
+	}
 
-				// 1. Command Execution
-				if (realPkg == "os/exec" && (funcName == "Command" || funcName == "CommandContext")) ||
-					(realPkg == "os" && funcName == "StartProcess") ||
-					(realPkg == "syscall" && (funcName == "Exec" || funcName == "ForkExec")) {
-					issues = append(issues, Issue{
-						ID:          "SECURITY-PROCESS-EXEC",
-						Category:    Security,
-						Severity:    High,
-						Title:       fmt.Sprintf("External process execution via %s.%s", realPkg, funcName),
-						Description: "Executing external processes can lead to command injection if input is not sanitized.",
-						Location:    c.fset.Position(call.Pos()).String(),
-						Suggestion:  "Avoid external processes if possible. If necessary, use hardcoded paths and sanitized arguments.",
-						Effort:      MediumEffort,
-						Priority:    P1,
-						Status:      Pending,
-					})
-				}
+	realPkg := importMap[pkgAlias]
+	funcName := sel.Sel.Name
 
-				// 2. Network Listeners
-				if realPkg == "net" && (strings.HasPrefix(funcName, "Listen")) {
-					issues = append(issues, Issue{
-						ID:          "SECURITY-NET-LISTEN",
-						Category:    Security,
-						Severity:    Medium,
-						Title:       fmt.Sprintf("Network listener created via %s.%s", realPkg, funcName),
-						Description: "Opening network ports can expose the application to remote attacks.",
-						Location:    c.fset.Position(call.Pos()).String(),
-						Suggestion:  "Ensure the listener is bound to localhost unless external access is required.",
-						Effort:      MediumEffort,
-						Priority:    P2,
-						Status:      Pending,
-					})
-				}
+	var issues []Issue
+	issues = append(issues, c.checkCommandExecution(call, realPkg, funcName, reviewed)...)
+	issues = append(issues, c.checkNetworkListeners(call, realPkg, funcName, reviewed)...)
+	issues = append(issues, c.checkDirectSyscalls(call, realPkg, funcName, reviewed)...)
 
-				// 3. Direct Syscalls
-				if realPkg == "syscall" && strings.HasPrefix(funcName, "Syscall") {
-					issues = append(issues, Issue{
-						ID:          "SECURITY-DIRECT-SYSCALL",
-						Category:    Security,
-						Severity:    Critical,
-						Title:       "Direct Syscall usage",
-						Description: "Direct system calls bypass Go's safety abstractions.",
-						Location:    c.fset.Position(call.Pos()).String(),
-						Suggestion:  "Use higher-level abstractions in 'os' or 'net' packages.",
-						Effort:      Large,
-						Priority:    P0,
-						Status:      Pending,
-					})
-				}
-			}
-		}
-		return true
-	})
 	return issues
 }
+
+func (c *CodeAnalyzer) checkCommandExecution(call *ast.CallExpr, realPkg, funcName string, reviewed map[string]bool) []Issue {
+	if (realPkg == "os/exec" && (funcName == "Command" || funcName == "CommandContext")) ||
+		(realPkg == "os" && funcName == "StartProcess") ||
+		(realPkg == "syscall" && (funcName == "Exec" || funcName == "ForkExec")) {
+		if !reviewed["SECURITY-PROCESS-EXEC"] {
+			return []Issue{{
+				ID:          "SECURITY-PROCESS-EXEC",
+				Category:    Security,
+				Severity:    High,
+				Title:       fmt.Sprintf("External process execution via %s.%s", realPkg, funcName),
+				Description: "Executing external processes can lead to command injection if input is not sanitized.",
+				Location:    c.fset.Position(call.Pos()).String(),
+				Suggestion:  "Avoid external processes if possible. If necessary, use hardcoded paths and sanitized arguments.",
+				Effort:      MediumEffort,
+				Priority:    P1,
+				Status:      Pending,
+			}}
+		}
+	}
+	return nil
+}
+
+func (c *CodeAnalyzer) checkNetworkListeners(call *ast.CallExpr, realPkg, funcName string, reviewed map[string]bool) []Issue {
+	if realPkg == "net" && (strings.HasPrefix(funcName, "Listen")) {
+		if !reviewed["SECURITY-NET-LISTEN"] {
+			return []Issue{{
+				ID:          "SECURITY-NET-LISTEN",
+				Category:    Security,
+				Severity:    Medium,
+				Title:       fmt.Sprintf("Network listener created via %s.%s", realPkg, funcName),
+				Description: "Opening network ports can expose the application to remote attacks.",
+				Location:    c.fset.Position(call.Pos()).String(),
+				Suggestion:  "Ensure the listener is bound to localhost unless external access is required.",
+				Effort:      MediumEffort,
+				Priority:    P2,
+				Status:      Pending,
+			}}
+		}
+	}
+	return nil
+}
+
+func (c *CodeAnalyzer) checkDirectSyscalls(call *ast.CallExpr, realPkg, funcName string, reviewed map[string]bool) []Issue {
+	if realPkg == "syscall" && strings.HasPrefix(funcName, "Syscall") {
+		if !reviewed["SECURITY-DIRECT-SYSCALL"] {
+			return []Issue{{
+				ID:          "SECURITY-DIRECT-SYSCALL",
+				Category:    Security,
+				Severity:    Critical,
+				Title:       "Direct Syscall usage",
+				Description: "Direct system calls bypass Go's safety abstractions.",
+				Location:    c.fset.Position(call.Pos()).String(),
+				Suggestion:  "Use higher-level abstractions in 'os' or 'net' packages.",
+				Effort:      Large,
+				Priority:    P0,
+				Status:      Pending,
+			}}
+		}
+	}
+	return nil
+}
+
+
 
 // AnalyzePackages performs analysis at the package level.
 func (c *CodeAnalyzer) AnalyzePackages(ctx context.Context, path string, ws *Workspace) ([]Issue, error) {

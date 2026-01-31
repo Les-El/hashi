@@ -33,19 +33,32 @@ func (d *DependencyAnalyzer) Analyze(ctx context.Context, path string, ws *Works
 }
 
 func (d *DependencyAnalyzer) checkVulnerabilities(ctx context.Context, path string) ([]Issue, error) {
-	cmd, err := safeCommand(ctx, "govulncheck", "./...")
+	cmd, err := safeCommand(ctx, "govulncheck", "-json", "./...")
 	if err != nil {
-		return nil, nil // If tool not found or not allowed, skip
+		// Security: Return an issue notifying that the tool is missing
+		return []Issue{{
+			ID:          "SECURITY-TOOL-MISSING",
+			Category:    Security,
+			Severity:    Medium,
+			Title:       "Security tool 'govulncheck' not found",
+			Description: fmt.Sprintf("The govulncheck tool is missing or not allowed: %v. Security vulnerability scanning was skipped.", err),
+			Location:    path,
+			Suggestion:  "Install govulncheck: go install golang.org/x/vuln/cmd/govulncheck@latest",
+			Effort:      Small,
+			Priority:    P1,
+		}}, nil
 	}
 
 	cmd.Dir = path
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 
 	var issues []Issue
+	// govulncheck returns non-zero exit code if vulnerabilities are found or if it fails.
+	// When using -json, we should check if the output contains any "osv" findings.
 	if len(output) > 0 {
 		outStr := string(output)
-		if strings.Contains(outStr, "Vulnerability") {
-			// Basic parsing of govulncheck output
+		// Robust parsing: check for OSV entries in the JSON stream
+		if strings.Contains(outStr, "\"osv\":") || strings.Contains(outStr, "\"vulnerability\":") {
 			issues = append(issues, Issue{
 				ID:          "SECURITY-VULNERABILITY",
 				Category:    Security,
@@ -58,6 +71,19 @@ func (d *DependencyAnalyzer) checkVulnerabilities(ctx context.Context, path stri
 				Priority:    P0,
 			})
 		}
+	} else if err != nil {
+		// If no output but command failed, report as a tool error
+		issues = append(issues, Issue{
+			ID:          "SECURITY-TOOL-ERROR",
+			Category:    Security,
+			Severity:    Low,
+			Title:       "Security tool 'govulncheck' failed to execute",
+			Description: fmt.Sprintf("govulncheck failed with error: %v", err),
+			Location:    path,
+			Suggestion:  "Check your Go environment and network connectivity.",
+			Effort:      Small,
+			Priority:    P3,
+		})
 	}
 
 	return issues, nil

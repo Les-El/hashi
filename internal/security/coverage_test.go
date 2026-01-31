@@ -63,9 +63,9 @@ func TestValidateDirPath_Coverage(t *testing.T) {
 		}
 	})
 
-	t.Run("HashiConfig", func(t *testing.T) {
-		if err := ValidateDirPath(".hashi/config", Options{}); err == nil {
-			t.Error("Expected error for .hashi directory")
+	t.Run("ChexumConfig", func(t *testing.T) {
+		if err := ValidateDirPath(".chexum/config", Options{}); err == nil {
+			t.Error("Expected error for .chexum directory")
 		}
 	})
 

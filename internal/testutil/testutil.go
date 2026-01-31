@@ -1,12 +1,10 @@
-// Package testutil provides utilities for testing the hashi CLI tool and its components.
+// Package testutil provides utilities for testing the chexum CLI tool and its components.
 package testutil
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -97,7 +95,7 @@ func contains(s, substr string) bool {
 }
 
 // AutoCleanupStorage performs automatic cleanup of temporary storage to prevent disk space issues during tests.
-// This function identifies and removes Go build artifacts (go-build-*, etc) and hashi-specific temporary files.
+// This function identifies and removes Go build artifacts (go-build-*, etc) and chexum-specific temporary files.
 // It uses force cleanup mode to ensure space is freed up for subsequent tests.
 // Returns true if cleanup was performed successfully.
 func AutoCleanupStorage(t *testing.T) bool {
@@ -105,7 +103,7 @@ func AutoCleanupStorage(t *testing.T) bool {
 
 	tmpDir := os.TempDir()
 	patterns := []string{
-		"hashi-*",
+		"chexum-*",
 		"checkpoint-*",
 		"test-*",
 	}
@@ -131,13 +129,6 @@ func AutoCleanupStorage(t *testing.T) bool {
 // that accumulate and consume disk space during testing.
 func RequireCleanStorage(t *testing.T) {
 	t.Helper()
-
-	tmpDir := os.TempDir()
-	// Use platform-specific removal command if possible, otherwise fallback to Go
-	if _, err := exec.LookPath("rm"); err == nil {
-		cmd := exec.Command("bash", "-c", fmt.Sprintf("rm -rf %s/hashi-* %s/checkpoint-* %s/test-* 2>/dev/null || true", tmpDir, tmpDir, tmpDir))
-		cmd.Run()
-	}
 
 	AutoCleanupStorage(t)
 }

@@ -79,7 +79,7 @@ func (r *Reporter) GenerateCSVReport() (string, error) {
 // GenerateRemediationPlan creates a detailed markdown plan to fix identified issues.
 func (r *Reporter) GenerateRemediationPlan() (string, error) {
 	var sb strings.Builder
-	sb.WriteString("# Remediation Plan: Hashi Project Stabilization\n\n")
+	sb.WriteString("# Remediation Plan: Chexum Project Stabilization\n\n")
 	sb.WriteString("## Overview\n\n")
 	sb.WriteString(fmt.Sprintf("Analysis identified %d issues across %d categories.\n\n", len(r.issues), r.countCategories()))
 
@@ -159,17 +159,17 @@ func (r *Reporter) GenerateOnboardingGuide() (string, error) {
 	sb.WriteString("## Getting Started\n\n")
 	sb.WriteString("```bash\n")
 	sb.WriteString("# Clone the repository\n")
-	sb.WriteString("git clone https://github.com/Les-El/hashi.git\n\n")
+	sb.WriteString("git clone https://github.com/Les-El/chexum.git\n\n")
 	sb.WriteString("# Install dependencies\n")
 	sb.WriteString("go mod download\n\n")
 	sb.WriteString("# Run tests\n")
 	sb.WriteString("go test ./...\n\n")
 	sb.WriteString("# Build the project\n")
-	sb.WriteString("go build -o hashi ./cmd/hashi\n")
+	sb.WriteString("go build -o chexum ./cmd/chexum\n")
 	sb.WriteString("```\n\n")
 
 	sb.WriteString("## Project Architecture\n\n")
-	sb.WriteString("- `cmd/hashi`: The main entry point and CLI command definitions.\n")
+	sb.WriteString("- `cmd/chexum`: The main entry point and CLI command definitions.\n")
 	sb.WriteString("- `internal/`: Private packages containing the core logic:\n")
 	sb.WriteString("  - `checkpoint`: The major checkpoint analysis system.\n")
 	sb.WriteString("  - `config`: Configuration parsing and flag management.\n")

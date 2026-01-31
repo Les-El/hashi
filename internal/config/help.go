@@ -26,6 +26,7 @@ EXAMPLES
   chexum -b file1.txt file2.txt   Boolean check: do files match? (outputs true/false)
   chexum -r /path/to/dir          Recursively hash directory
   chexum --json *.txt             Output results as JSON
+  chexum --csv *.txt              Output results as CSV
   chexum -                        Read file list from stdin
 `
 
@@ -43,6 +44,7 @@ FLAGS
   -H, --hidden              Include hidden files
       --dry-run             Preview files without hashing
   -a, --algorithm string    Hash algorithm: sha256, md5, sha1, sha512, blake2b (default: sha256)
+  -j, --jobs int            Number of parallel jobs (0 = auto)
       --test                Run system diagnostics for troubleshooting
       --preserve-order      Keep input order instead of grouping by hash
 `
@@ -55,16 +57,20 @@ BOOLEAN MODE (-b / --bool)
   Default behavior (no match flags):
     chexum -b file1 file2 file3     # true if ALL files match
 
-  With --match-required:
-    chexum -b --match-required *.txt    # true if ANY matches found
+  With --any-match:
+    chexum -b --any-match *.txt     # true if ANY matches found
+
+  With --all-match:
+    chexum -b --all-match *.txt     # true if ALL files have a match
 `
 
 const helpOutputFormats = `
 OUTPUT FORMATS
-  -f, --format string       Output format: default, verbose, json, jsonl, plain
+  -f, --format string       Output format: default, verbose, json, jsonl, plain, csv
       --json                Shorthand for --format=json
       --jsonl               Shorthand for --format=jsonl
       --plain               Shorthand for --format=plain
+      --csv                 Shorthand for --format=csv
   -o, --output string       Write output to file
       --append              Append to output file
       --force               Overwrite without prompting
@@ -74,7 +80,8 @@ OUTPUT FORMATS
 
 const helpFiltering = `
 EXIT CODE CONTROL
-      --match-required      Exit 0 only if matches found
+      --any-match           Exit 0 if at least one match is found
+      --all-match           Exit 0 only if all files match
 
 FILTERING
   -i, --include strings     Glob patterns to include
@@ -106,24 +113,24 @@ ENVIRONMENT VARIABLES
   CHEXUM_* Variables (override config file settings):
     CHEXUM_CONFIG            Default config file path
     CHEXUM_ALGORITHM         Hash algorithm (sha256, md5, sha1, sha512, blake2b)
-    CHEXUM_OUTPUT_FORMAT     Output format (default, verbose, json, plain)
+    CHEXUM_OUTPUT_FORMAT     Output format (default, verbose, json, plain, csv)
     CHEXUM_RECURSIVE         Process directories recursively (true/false)
 `
 
 const helpFooter = `
 EXIT CODES
   0   Success
-  1   No matches found (with --match-required)
+  1   No matches found (with --any-match or --all-match)
   2   Some files failed to process
   3   Invalid arguments
   4   File not found
   5   Permission denied
   130 Interrupted (Ctrl-C)
 
-For more information, visit: https://github.com/example/chexum
+For more information, visit: https://github.com/Les-El/chexum
 `
 
 // VersionText returns the current version string.
 func VersionText() string {
-	return "chexum v0.5.0"
+	return "chexum version v0.5.1"
 }

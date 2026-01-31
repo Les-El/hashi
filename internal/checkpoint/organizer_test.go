@@ -118,9 +118,25 @@ func TestGetActiveSnapshots(t *testing.T) {
 }
 
 func TestCleanupArchives(t *testing.T) {
-	organizer := NewOrganizer(".")
+	tmpDir := t.TempDir()
+	organizer := NewOrganizer(tmpDir)
+
+	archiveDir := filepath.Join(tmpDir, "archive")
+	os.MkdirAll(filepath.Join(archiveDir, "2020-01"), 0755)
+	os.MkdirAll(filepath.Join(archiveDir, "2025-01"), 0755)
+	os.MkdirAll(filepath.Join(archiveDir, "invalid-name"), 0755)
+
 	if err := organizer.CleanupArchives(1); err != nil {
 		t.Errorf("CleanupArchives failed: %v", err)
+	}
+
+	// 2020-01 should be gone, 2025-01 should remain (assuming test runs in 2026), invalid-name should remain
+	if _, err := os.Stat(filepath.Join(archiveDir, "2020-01")); !os.IsNotExist(err) {
+		t.Error("Expected 2020-01 archive to be removed")
+	}
+
+	if _, err := os.Stat(filepath.Join(archiveDir, "invalid-name")); os.IsNotExist(err) {
+		t.Error("Expected invalid-name archive to remain")
 	}
 }
 
@@ -129,7 +145,7 @@ func TestOrganizer_SnapshotError(t *testing.T) {
 	organizer := NewOrganizer(tmpDir)
 
 	// Latest dir doesn't exist
-	if err := organizer.CreateSnapshot("fail"); err != nil {
-		t.Logf("Expected failure when latest dir missing: %v", err)
+	if err := organizer.CreateSnapshot("fail"); err == nil {
+		t.Errorf("Expected failure when latest dir missing, got nil")
 	}
 }

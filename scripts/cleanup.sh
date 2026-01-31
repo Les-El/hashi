@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Hashi Project Cleanup Script
+# Chexum Project Cleanup Script
 # Removes temporary build artifacts and frees up temporary storage space
 
 set -e
@@ -43,7 +43,7 @@ show_usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Cleanup temporary files and build artifacts for the Hashi project.
+Cleanup temporary files and build artifacts for the Chexum project.
 
 OPTIONS:
     -v, --verbose       Enable verbose output

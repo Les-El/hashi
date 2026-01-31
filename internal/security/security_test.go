@@ -48,25 +48,22 @@ func TestValidateOutputPath(t *testing.T) {
 			t.Errorf("expected whitelist to allow file, got %v", err)
 		}
 	})
+}
 
-	t.Run("symlink check", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		target := filepath.Join(tmpDir, "target.txt")
-		if err := os.WriteFile(target, []byte("data"), 0600); err != nil {
-			t.Fatal(err)
-		}
-		link := filepath.Join(tmpDir, "link.txt")
-		if err := os.Symlink(target, link); err != nil {
-			// Skip if OS doesn't support symlinks (e.g. some Windows configs)
-			t.Skip("skipping symlink test: ", err)
-		}
+func TestValidateOutputPath_Symlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "target.txt")
+	os.WriteFile(target, []byte("data"), 0600)
+	link := filepath.Join(tmpDir, "link.txt")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skip("skipping symlink test: ", err)
+	}
 
-		if err := ValidateOutputPath(link, opts); err == nil {
-			t.Error("expected error for symlink")
-		} else if !strings.Contains(err.Error(), "symlink") {
-			t.Errorf("expected symlink error, got %v", err)
-		}
-	})
+	if err := ValidateOutputPath(link, Options{Verbose: true}); err == nil {
+		t.Error("expected error for symlink")
+	} else if !strings.Contains(err.Error(), "symlink") {
+		t.Errorf("expected symlink error, got %v", err)
+	}
 }
 
 func TestProperty_SecurityValidation(t *testing.T) {
@@ -146,5 +143,25 @@ func TestValidateInputs(t *testing.T) {
 	badHashes := []string{"not-hex"}
 	if err := ValidateInputs(files, badHashes, opts); err == nil {
 		t.Error("Expected error for invalid hex hash")
+	}
+}
+
+func TestSanitizeOutput(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"safe", "safe"},
+		{"with\nnewline", "with?newline"},
+		{"with\rescape", "with?escape"},
+		{"with\tescape", "with?escape"},
+		{"\x1b[31mred\x1b[0m", "?[31mred?[0m"},
+	}
+
+	for _, tc := range tests {
+		got := SanitizeOutput(tc.input)
+		if got != tc.expected {
+			t.Errorf("SanitizeOutput(%q) = %q; expected %q", tc.input, got, tc.expected)
+		}
 	}
 }

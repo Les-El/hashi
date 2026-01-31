@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 // Property 7: Configurable Cleanup Patterns
@@ -63,7 +63,7 @@ func TestProperty_CleanupMetricsAccuracy(t *testing.T) {
 		}
 		// Create dirs
 		for i := 0; i < numDirs; i++ {
-			dirPath := filepath.Join(tmpDir, fmt.Sprintf("hashi-dir-%d", i))
+			dirPath := filepath.Join(tmpDir, fmt.Sprintf("chexum-dir-%d", i))
 			os.MkdirAll(dirPath, 0755)
 			content := "dir file data"
 			os.WriteFile(filepath.Join(dirPath, "data.txt"), []byte(content), 0644)

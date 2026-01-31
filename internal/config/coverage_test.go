@@ -105,17 +105,17 @@ func TestApplyEnvConfig_Coverage(t *testing.T) {
 	fs.Bool("preserve-order", false, "")
 
 	env := &EnvConfig{
-		HashiAlgorithm:      "md5",
-		HashiOutputFormat:   "json",
-		HashiRecursive:      true,
-		HashiHidden:         true,
-		HashiVerbose:        true,
-		HashiQuiet:          true,
-		HashiPreserveOrder:  true,
-		HashiBlacklistFiles: "f1,f2",
-		HashiBlacklistDirs:  "d1,d2",
-		HashiWhitelistFiles: "w1,w2",
-		HashiWhitelistDirs:  "wd1,wd2",
+		ChexumAlgorithm:      "md5",
+		ChexumOutputFormat:   "json",
+		ChexumRecursive:      true,
+		ChexumHidden:         true,
+		ChexumVerbose:        true,
+		ChexumQuiet:          true,
+		ChexumPreserveOrder:  true,
+		ChexumBlacklistFiles: "f1,f2",
+		ChexumBlacklistDirs:  "d1,d2",
+		ChexumWhitelistFiles: "w1,w2",
+		ChexumWhitelistDirs:  "wd1,wd2",
 	}
 
 	env.ApplyEnvConfig(cfg, fs)

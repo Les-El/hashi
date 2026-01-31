@@ -1,31 +1,31 @@
-# Scripting with hashi
+# Scripting with chexum
 
 ## The -b Flag (Boolean Mode)
 
-The `-b` / `--bool` flag is the easiest way to use hashi in scripts. It outputs just `true` or `false`:
+The `-b` / `--bool` flag is the easiest way to use chexum in scripts. It outputs just `true` or `false`:
 
 ```bash
 # Simple comparison
-$ hashi -b file1.txt file2.txt
+$ chexum -b file1.txt file2.txt
 true
 
 # Use in conditions
-$ hashi -b file1.txt file2.txt && echo "match" || echo "different"
+$ chexum -b file1.txt file2.txt && echo "match" || echo "different"
 match
 
 # Capture result
-MATCH=$(hashi -b file1.txt file2.txt)
+MATCH=$(chexum -b file1.txt file2.txt)
 ```
 
 See [BOOL_MODE.md](BOOL_MODE.md) for complete documentation.
 
 ## Exit Codes
 
-hashi uses meaningful exit codes for scripting:
+chexum uses meaningful exit codes for scripting:
 
 ```bash
-0   - Success (all files processed, or matches found with --match-required)
-1   - No matches found (with --match-required)
+0   - Success (all files processed, or matches found with --any-match or --all-match)
+1   - No matches found (with --any-match or --all-match)
 2   - Some files failed to process
 3   - Invalid arguments
 4   - File not found
@@ -39,28 +39,28 @@ hashi uses meaningful exit codes for scripting:
 
 ```bash
 # Using -b flag (recommended)
-if hashi -b file1.txt file2.txt; then
+if chexum -b file1.txt file2.txt; then
     echo "Files match"
 else
     echo "Files differ"
 fi
 
 # Or capture the boolean
-MATCH=$(hashi -b file1.txt file2.txt)
+MATCH=$(chexum -b file1.txt file2.txt)
 [ "$MATCH" = "true" ] && echo "match" || echo "differ"
 
-# Using exit code with --quiet --match-required
-hashi --quiet --match-required file1.txt file2.txt && echo "match" || echo "differ"
+# Using exit code with --quiet --any-match
+chexum --quiet --any-match file1.txt file2.txt && echo "match" || echo "differ"
 ```
 
 ### Get Just the Hash
 
 ```bash
 # Capture hash output
-HASH=$(hashi --quiet file.txt)
+HASH=$(chexum --quiet file.txt)
 
 # Use in comparison
-if [ "$(hashi --quiet file1.txt)" = "$(hashi --quiet file2.txt)" ]; then
+if [ "$(chexum --quiet file1.txt)" = "$(chexum --quiet file2.txt)" ]; then
     echo "Files match"
 fi
 ```
@@ -69,10 +69,10 @@ fi
 
 ```bash
 # Find duplicates
-hashi --quiet *.txt | sort | uniq -d
+chexum --quiet *.txt | sort | uniq -d
 
 # Count unique files
-hashi --quiet *.txt | sort -u | wc -l
+chexum --quiet *.txt | sort -u | wc -l
 ```
 
 ## Advanced Patterns
@@ -81,13 +81,13 @@ hashi --quiet *.txt | sort -u | wc -l
 
 ```bash
 # Only process if files don't match (using -b)
-if ! hashi -b old.txt new.txt; then
+if ! chexum -b old.txt new.txt; then
     echo "Files changed, processing..."
     process_file new.txt
 fi
 
 # Alternative with exit code
-if ! hashi --quiet --match-required old.txt new.txt; then
+if ! chexum --quiet --any-match old.txt new.txt; then
     echo "Files changed, processing..."
     process_file new.txt
 fi
@@ -97,14 +97,14 @@ fi
 
 ```bash
 # Hash files in parallel
-find . -type f | parallel hashi --quiet {}
+find . -type f | parallel chexum --quiet {}
 ```
 
 ### Error Handling
 
 ```bash
 # Capture exit code
-hashi --quiet file.txt
+chexum --quiet file.txt
 EXIT_CODE=$?
 
 case $EXIT_CODE in
@@ -125,8 +125,8 @@ esac
 
 ```bash
 # Perfect for -b
-hashi -b file1 file2 && echo "match"
-RESULT=$(hashi -b file1 file2)
+chexum -b file1 file2 && echo "match"
+RESULT=$(chexum -b file1 file2)
 ```
 
 ### When to Use --quiet
@@ -137,8 +137,8 @@ RESULT=$(hashi -b file1 file2)
 
 ```bash
 # Better with --quiet
-HASH=$(hashi --quiet file.txt)
-hashi --quiet *.txt | sort | uniq
+HASH=$(chexum --quiet file.txt)
+chexum --quiet *.txt | sort | uniq
 ```
 
 ## The --quiet Flag
@@ -153,10 +153,10 @@ hashi --quiet *.txt | sort | uniq
 
 ```bash
 # Good for scripting
-hashi --quiet file.txt
+chexum --quiet file.txt
 
 # Bad for scripting (too much noise)
-hashi file.txt
+chexum file.txt
 ```
 
 ## Output Formats
@@ -200,11 +200,11 @@ A potential `--bool` flag for even simpler scripting:
 
 ```bash
 # Output just "true" or "false"
-hashi --bool file1.txt file2.txt
+chexum --bool file1.txt file2.txt
 # Output: true
 
 # Use in conditions
-if [ "$(hashi --bool file1.txt file2.txt)" = "true" ]; then
+if [ "$(chexum --bool file1.txt file2.txt)" = "true" ]; then
     echo "Match"
 fi
 ```
@@ -213,7 +213,7 @@ However, this might be redundant since exit codes already provide this:
 
 ```bash
 # Equivalent using exit codes
-hashi --quiet --match-required file1.txt file2.txt && echo "true" || echo "false"
+chexum --quiet --any-match file1.txt file2.txt && echo "true" || echo "false"
 ```
 
 ## Best Practices
@@ -221,7 +221,7 @@ hashi --quiet --match-required file1.txt file2.txt && echo "true" || echo "false
 1. **Use -b for boolean checks** - it's the simplest and clearest
 2. **Use --quiet for hash extraction** - when you need the actual values
 3. **Check exit codes** rather than parsing output when possible
-4. **Use --match-required** only if not using -b
+4. **Use --any-match or --all-match** only if not using -b
 5. **Redirect stderr** if you want to suppress errors (but usually don't)
 6. **Use --json** if you need structured data for complex processing
 
@@ -237,7 +237,7 @@ BACKUP_FILE="backup.tar.gz"
 ORIGINAL_FILE="original.tar.gz"
 
 # Simple boolean check
-if hashi -b "$ORIGINAL_FILE" "$BACKUP_FILE"; then
+if chexum -b "$ORIGINAL_FILE" "$BACKUP_FILE"; then
     echo "Backup verified successfully"
     exit 0
 else
@@ -253,7 +253,7 @@ fi
 
 # Find all duplicate files in a directory
 find . -type f -print0 | \
-    xargs -0 hashi --quiet | \
+    xargs -0 chexum --quiet | \
     sort | \
     uniq -d -w 64 | \
     cut -d' ' -f2-
@@ -268,7 +268,7 @@ CONFIG_FILE="/etc/myapp/config.yaml"
 BACKUP_FILE="/etc/myapp/config.yaml.bak"
 
 # Check if changed using -b
-if ! hashi -b "$CONFIG_FILE" "$BACKUP_FILE"; then
+if ! chexum -b "$CONFIG_FILE" "$BACKUP_FILE"; then
     echo "Config changed, reloading..."
     cp "$CONFIG_FILE" "$BACKUP_FILE"
     systemctl reload myapp

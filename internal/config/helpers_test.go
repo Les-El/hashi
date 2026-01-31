@@ -6,27 +6,27 @@ import (
 
 func TestClassifyArguments(t *testing.T) {
 	tests := []struct {
-		name       string
-		args       []string
-		algorithm  string
-		wantFiles  int
-		wantHashes int
-		wantErr    bool
+		name          string
+		args          []string
+		algorithm     string
+		wantFiles     int
+		wantHashes    int
+		wantUnknowns  int
 	}{
-		{"files only", []string{"go.mod", "go.sum"}, "sha256", 2, 0, false},
-		{"hashes only", []string{"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}, "sha256", 0, 1, false},
-		{"mixed", []string{"go.mod", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}, "sha256", 1, 1, false},
-		{"stdin", []string{"-"}, "sha256", 1, 0, false},
-		{"invalid hash length for algo", []string{"d41d8cd98f00b204e9800998ecf8427e"}, "sha256", 0, 0, true},
-		{"invalid hex", []string{"not-a-hash-but-looks-like-one-if-it-had-hex-only-0123456789abcdefg"}, "sha256", 1, 0, false},
-		{"hash like but unknown length", []string{"abcde"}, "sha256", 0, 0, true},
+		{"files only", []string{"config.go", "cli.go"}, "sha256", 2, 0, 0},
+		{"hashes only", []string{"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}, "sha256", 0, 1, 0},
+		{"mixed", []string{"config.go", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}, "sha256", 1, 1, 0},
+		{"stdin", []string{"-"}, "sha256", 1, 0, 0},
+		{"invalid hash length for algo", []string{"d41d8cd98f00b204e9800998ecf8427e"}, "sha256", 0, 0, 1},
+		{"invalid hex", []string{"not-a-hash-but-looks-like-one-if-it-had-hex-only-0123456789abcdefg"}, "sha256", 0, 0, 1},
+		{"hash like but unknown length", []string{"abcde"}, "sha256", 0, 0, 1},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			files, hashes, err := ClassifyArguments(tt.args, tt.algorithm)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ClassifyArguments() error = %v, wantErr %v", err, tt.wantErr)
+			files, hashes, unknowns, err := ClassifyArguments(tt.args, tt.algorithm)
+			if err != nil {
+				t.Errorf("ClassifyArguments() unexpected error = %v", err)
 				return
 			}
 			if len(files) != tt.wantFiles {
@@ -34,6 +34,9 @@ func TestClassifyArguments(t *testing.T) {
 			}
 			if len(hashes) != tt.wantHashes {
 				t.Errorf("got %d hashes, want %d", len(hashes), tt.wantHashes)
+			}
+			if len(unknowns) != tt.wantUnknowns {
+				t.Errorf("got %d unknowns, want %d", len(unknowns), tt.wantUnknowns)
 			}
 		})
 	}

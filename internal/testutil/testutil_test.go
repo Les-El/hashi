@@ -72,7 +72,7 @@ func TestAssertContains(t *testing.T) {
 
 func TestAutoCleanupStorage(t *testing.T) {
 	// Create a file that matches the pattern
-	path := filepath.Join(os.TempDir(), "hashi-cleanup-test")
+	path := filepath.Join(os.TempDir(), "chexum-cleanup-test")
 	if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
 		t.Fatalf("failed to create test file in /tmp: %v", err)
 	}

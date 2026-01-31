@@ -1,8 +1,0 @@
-origin	https://github.com/Les-El/hashi.git (fetch)
-origin	https://github.com/Les-El/hashi.git (push)
-  main
-* remove-zip
-  remotes/origin/HEAD -> origin/main
-  remotes/origin/main
-  remotes/origin/main-260118-2359
-  remotes/origin/remove-zip

@@ -1,14 +1,14 @@
-// Package output provides formatters for hashi output.
+// Package output provides formatters for chexum output.
 //
 // DESIGN PRINCIPLE: Human-First, Machine-Ready
 // -------------------------------------------
-// Hashi believes that output should be immediately scannable by a human eye
+// Chexum believes that output should be immediately scannable by a human eye
 // while remaining robust enough for machine consumption.
 //
-// 1. DEFAULT FORMAT: Prioritizes duplication detection by grouping identical
-//    hashes together with blank line separators.
-// 2. JSON/JSONL: Provides complete structured data for automated toolchains.
-// 3. PLAIN: A tab-separated "grep-friendly" format for Unix veterans.
+//  1. DEFAULT FORMAT: Prioritizes duplication detection by grouping identical
+//     hashes together with blank line separators.
+//  2. JSON/JSONL: Provides complete structured data for automated toolchains.
+//  3. PLAIN: A tab-separated "grep-friendly" format for Unix veterans.
 //
 // Mandate: "No Lock-Out"
 // We provide --preserve-order to ensure that our smart grouping defaults
@@ -21,7 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/hash"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 // Formatter is the interface for output formatters.
@@ -37,30 +38,82 @@ type DefaultFormatter struct{}
 func (f *DefaultFormatter) Format(result *hash.Result) string {
 	var sb strings.Builder
 
-	// Output match groups first
-	for i, group := range result.Matches {
-		if i > 0 {
-			sb.WriteString("\n")
-		}
-		for _, entry := range group.Entries {
-			sb.WriteString(fmt.Sprintf("%s    %s\n", entry.Original, entry.Hash))
-		}
+	f.writePoolMatches(&sb, result.PoolMatches)
+	if len(result.PoolMatches) > 0 && (len(result.Matches) > 0 || len(result.Unmatched) > 0) {
+		sb.WriteString("\n")
 	}
 
-	// Add blank line before unmatched if there were matches
+	f.writeMatchGroups(&sb, result.Matches)
 	if len(result.Matches) > 0 && len(result.Unmatched) > 0 {
 		sb.WriteString("\n")
 	}
 
-	// Output unmatched files
-	for i, entry := range result.Unmatched {
+	f.writeUnmatched(&sb, result.Unmatched)
+	f.writeRefOrphans(&sb, result.RefOrphans, len(result.Matches) > 0 || len(result.Unmatched) > 0)
+	f.writeUnknowns(&sb, result.Unknowns, len(result.Matches) > 0 || len(result.Unmatched) > 0 || len(result.RefOrphans) > 0)
+
+	return strings.TrimSuffix(sb.String(), "\n")
+}
+
+func (f *DefaultFormatter) writePoolMatches(sb *strings.Builder, matches []hash.PoolMatch) {
+	for _, m := range matches {
+		sb.WriteString(fmt.Sprintf("Match, %s, %s, %s, %s\n",
+			m.Algorithm, m.ProvidedHash, security.SanitizeOutput(m.FilePath), m.ComputedHash))
+	}
+}
+
+func (f *DefaultFormatter) writeMatchGroups(sb *strings.Builder, groups []hash.MatchGroup) {
+	for i, group := range groups {
 		if i > 0 {
 			sb.WriteString("\n")
 		}
-		sb.WriteString(fmt.Sprintf("%s    %s\n", entry.Original, entry.Hash))
+		for _, entry := range group.Entries {
+			if entry.IsReference {
+				sb.WriteString(fmt.Sprintf("REFERENCE:    %s\n", entry.Hash))
+			} else {
+				sb.WriteString(fmt.Sprintf("%s    %s\n", security.SanitizeOutput(entry.Original), entry.Hash))
+			}
+		}
 	}
+}
 
-	return strings.TrimSuffix(sb.String(), "\n")
+func (f *DefaultFormatter) writeUnmatched(sb *strings.Builder, unmatched []hash.Entry) {
+	for i, entry := range unmatched {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("%s    %s\n", security.SanitizeOutput(entry.Original), entry.Hash))
+	}
+}
+
+func (f *DefaultFormatter) writeRefOrphans(sb *strings.Builder, orphans []hash.Entry, needsNewline bool) {
+	if len(orphans) == 0 {
+		return
+	}
+	if needsNewline {
+		sb.WriteString("\n")
+	}
+	for i, entry := range orphans {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("REFERENCE:    %s\n", entry.Hash))
+	}
+}
+
+func (f *DefaultFormatter) writeUnknowns(sb *strings.Builder, unknowns []string, needsNewline bool) {
+	if len(unknowns) == 0 {
+		return
+	}
+	if needsNewline {
+		sb.WriteString("\n")
+	}
+	for i, unknown := range unknowns {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("INVALID:    %s\n", security.SanitizeOutput(unknown)))
+	}
 }
 
 // PreserveOrderFormatter maintains input order without grouping.
@@ -72,7 +125,7 @@ func (f *PreserveOrderFormatter) Format(result *hash.Result) string {
 
 	for _, entry := range result.Entries {
 		if entry.Error == nil {
-			sb.WriteString(fmt.Sprintf("%s    %s\n", entry.Original, entry.Hash))
+			sb.WriteString(fmt.Sprintf("%s    %s\n", security.SanitizeOutput(entry.Original), entry.Hash))
 		}
 	}
 
@@ -96,7 +149,7 @@ func (f *VerboseFormatter) Format(result *hash.Result) string {
 		for i, group := range result.Matches {
 			sb.WriteString(fmt.Sprintf("  Group %d (%d files):\n", i+1, group.Count))
 			for _, entry := range group.Entries {
-				sb.WriteString(fmt.Sprintf("    %s    %s\n", entry.Original, entry.Hash))
+				sb.WriteString(fmt.Sprintf("    %s    %s\n", security.SanitizeOutput(entry.Original), entry.Hash))
 			}
 			sb.WriteString("\n")
 		}
@@ -106,7 +159,7 @@ func (f *VerboseFormatter) Format(result *hash.Result) string {
 	if len(result.Unmatched) > 0 {
 		sb.WriteString("Unmatched Files:\n")
 		for _, entry := range result.Unmatched {
-			sb.WriteString(fmt.Sprintf("  %s    %s\n", entry.Original, entry.Hash))
+			sb.WriteString(fmt.Sprintf("  %s    %s\n", security.SanitizeOutput(entry.Original), entry.Hash))
 		}
 		sb.WriteString("\n")
 	}
@@ -145,11 +198,11 @@ type jsonEntry struct {
 }
 
 type jsonlEntry struct {
-	Type      string      `json:"type"`
-	Name      string      `json:"name"`
-	Hash      string      `json:"hash"`
-	Status    string      `json:"status"`
-	Timestamp string      `json:"timestamp"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	Hash      string `json:"hash"`
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
 }
 
 // Format implements Formatter for JSONFormatter.
@@ -166,6 +219,7 @@ func (f *JSONFormatter) Format(result *hash.Result) string {
 	for _, group := range result.Matches {
 		files := make([]string, 0, len(group.Entries))
 		for _, entry := range group.Entries {
+			// We don't sanitize here because json.Marshal handles escapes
 			files = append(files, entry.Original)
 		}
 		output.MatchGroups = append(output.MatchGroups, jsonMatchGroup{
@@ -236,8 +290,46 @@ func (f *PlainFormatter) Format(result *hash.Result) string {
 	// Output all entries in input order, tab-separated
 	for _, entry := range result.Entries {
 		if entry.Error == nil {
-			sb.WriteString(fmt.Sprintf("%s\t%s\n", entry.Original, entry.Hash))
+			sb.WriteString(fmt.Sprintf("%s\t%s\n", security.SanitizeOutput(entry.Original), entry.Hash))
 		}
+	}
+
+	return strings.TrimSuffix(sb.String(), "\n")
+}
+
+// CSVFormatter outputs results in CSV format with Type, Name, Hash, Algorithm columns.
+type CSVFormatter struct{}
+
+// Format implements Formatter for CSVFormatter.
+func (f *CSVFormatter) Format(result *hash.Result) string {
+	var sb strings.Builder
+
+	// Output match groups
+	for _, group := range result.Matches {
+		for _, entry := range group.Entries {
+			if entry.IsReference {
+				sb.WriteString(fmt.Sprintf("REFERENCE,-,%s,%s\n", entry.Hash, entry.Algorithm))
+			} else {
+				sb.WriteString(fmt.Sprintf("FILE,%s,%s,%s\n",
+					security.SanitizeOutput(entry.Original), entry.Hash, entry.Algorithm))
+			}
+		}
+	}
+
+	// Output unmatched files
+	for _, entry := range result.Unmatched {
+		sb.WriteString(fmt.Sprintf("FILE,%s,%s,%s\n",
+			security.SanitizeOutput(entry.Original), entry.Hash, entry.Algorithm))
+	}
+
+	// Output orphaned reference hashes
+	for _, entry := range result.RefOrphans {
+		sb.WriteString(fmt.Sprintf("REFERENCE,-,%s,%s\n", entry.Hash, entry.Algorithm))
+	}
+
+	// Output invalid/unknown strings
+	for _, unknown := range result.Unknowns {
+		sb.WriteString(fmt.Sprintf("INVALID,%s,-,-\n", security.SanitizeOutput(unknown)))
 	}
 
 	return strings.TrimSuffix(sb.String(), "\n")
@@ -254,6 +346,8 @@ func NewFormatter(format string, preserveOrder bool) Formatter {
 		return &JSONLFormatter{}
 	case "plain":
 		return &PlainFormatter{}
+	case "csv":
+		return &CSVFormatter{}
 	default:
 		if preserveOrder {
 			return &PreserveOrderFormatter{}

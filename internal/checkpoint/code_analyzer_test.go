@@ -29,45 +29,55 @@ func TestCodeAnalyzer_Analyze(t *testing.T) {
 	ctx := context.Background()
 	ws, _ := NewWorkspace(true)
 
-	// Create a temporary directory for testing
-	tmpDir, err := os.MkdirTemp("", "code_analyzer_test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	// Create a test file with a TODO and unsafe import
-	testFile := filepath.Join(tmpDir, "test.go")
-	content := `package test
-import "unsafe"
-// TODO: implement this
-func foo() {}
-`
-	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to write test file: %v", err)
-	}
+	tmpDir := t.TempDir()
+	setupCodeAnalyzerTestFile(t, tmpDir)
 
 	issues, err := analyzer.Analyze(ctx, tmpDir, ws)
 	if err != nil {
 		t.Fatalf("Analyze failed: %v", err)
 	}
 
-	foundTodo := false
-	foundUnsafe := false
-	for _, issue := range issues {
-		if issue.ID == "TECH-DEBT" {
-			foundTodo = true
-		}
-		if issue.ID == "SECURITY-UNSAFE" {
-			foundUnsafe = true
-		}
+	expectedIDs := []string{
+		"TECH-DEBT",
+		"SECURITY-UNSAFE",
+		"SECURITY-PROCESS-EXEC",
+		"SECURITY-NET-LISTEN",
+		"SECURITY-DIRECT-SYSCALL",
 	}
 
-	if !foundTodo {
-		t.Error("expected to find TECH-DEBT issue")
+	for _, id := range expectedIDs {
+		t.Run(id, func(t *testing.T) {
+			found := false
+			for _, issue := range issues {
+				if issue.ID == id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected to find %s issue", id)
+			}
+		})
 	}
-	if !foundUnsafe {
-		t.Error("expected to find SECURITY-UNSAFE issue")
+}
+
+func setupCodeAnalyzerTestFile(t *testing.T, tmpDir string) {
+	testFile := filepath.Join(tmpDir, "test.go")
+	content := `package test
+import "unsafe"
+import "os/exec"
+import "net"
+import "syscall"
+
+// TODO: implement this
+func foo() {
+    exec.Command("ls")
+    net.Listen("tcp", ":8080")
+    syscall.Syscall(0, 0, 0, 0)
+}
+`
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
 	}
 }
 

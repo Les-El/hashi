@@ -1,4 +1,4 @@
-// Package progress provides progress bar functionality for hashi.
+// Package progress provides progress bar functionality for chexum.
 //
 // Progress indicators are shown for operations taking longer than 100ms.
 // The progress bar displays percentage, count, and ETA. It automatically
@@ -24,6 +24,7 @@ type Bar struct {
 	isTTY     bool
 	enabled   bool
 	threshold time.Duration
+	writer    io.Writer
 }
 
 // Options configures the progress bar behavior.
@@ -59,6 +60,7 @@ func NewBar(opts *Options) *Bar {
 		isTTY:     isTTY,
 		enabled:   false,
 		threshold: opts.Threshold,
+		writer:    opts.Writer,
 	}
 
 	if isTTY {
@@ -148,6 +150,20 @@ func (b *Bar) Finish() {
 func (b *Bar) Clear() {
 	if b.bar != nil {
 		b.bar.Clear()
+	}
+}
+
+// WriteMessage prints a message to the progress bar's writer,
+// ensuring the bar is cleared before printing and redrawn after.
+func (b *Bar) WriteMessage(msg string) {
+	if b.IsEnabled() {
+		b.Clear()
+		fmt.Fprintln(b.writer, msg)
+		// We don't force a redraw here, as the next Add/Increment
+		// or periodic update from the library will handle it.
+		// If we wanted immediate redraw we'd need bar.Render()
+	} else {
+		fmt.Fprintln(b.writer, msg)
 	}
 }
 

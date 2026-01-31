@@ -12,9 +12,9 @@ import (
 // TestApplyEnvConfig tests the ApplyEnvConfig function.
 func TestApplyEnvConfig(t *testing.T) {
 	t.Run("ApplyDefaults", func(t *testing.T) {
-		os.Setenv("HASHI_ALGORITHM", "md5")
-		os.Setenv("HASHI_RECURSIVE", "true")
-		os.Setenv("HASHI_BLACKLIST_FILES", "file1.log,file2.tmp")
+		os.Setenv("CHEXUM_ALGORITHM", "md5")
+		os.Setenv("CHEXUM_RECURSIVE", "true")
+		os.Setenv("CHEXUM_BLACKLIST_FILES", "file1.log,file2.tmp")
 		defer os.Clearenv()
 
 		cfg := DefaultConfig()
@@ -38,7 +38,7 @@ func TestApplyEnvConfig(t *testing.T) {
 	})
 
 	t.Run("FlagsOverrideEnv", func(t *testing.T) {
-		os.Setenv("HASHI_ALGORITHM", "md5")
+		os.Setenv("CHEXUM_ALGORITHM", "md5")
 		defer os.Clearenv()
 
 		cfg := DefaultConfig()
@@ -104,4 +104,12 @@ func TestLoadDotEnv(t *testing.T) {
 			t.Errorf("LoadDotEnv() expected error for invalid format, got %v", err)
 		}
 	})
+}
+
+func TestNewEnvParser(t *testing.T) {
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	p := NewEnvParser(nil, fs)
+	if p == nil {
+		t.Fatal("NewEnvParser returned nil")
+	}
 }

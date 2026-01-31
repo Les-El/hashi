@@ -19,7 +19,7 @@ type Workspace struct {
 
 // NewWorkspace creates a new workspace. If useMem is true, it uses an in-memory filesystem.
 // Otherwise, it creates a uniquely named directory in the system's temporary storage.
-func NewWorkspace(useMem bool) (*Workspace, error) {
+var NewWorkspace = func(useMem bool) (*Workspace, error) {
 	if useMem {
 		return &Workspace{
 			Fs:    afero.NewMemMapFs(),
@@ -27,7 +27,7 @@ func NewWorkspace(useMem bool) (*Workspace, error) {
 		}, nil
 	}
 
-	root, err := os.MkdirTemp("", "hashi-workspace-*")
+	root, err := os.MkdirTemp("", "chexum-workspace-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workspace root: %w", err)
 	}

@@ -1,8 +1,8 @@
 package console
 
 import (
-	"github.com/Les-El/hashi/internal/config"
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"

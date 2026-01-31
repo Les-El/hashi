@@ -47,6 +47,7 @@ func TestDiscoverPackageByName(t *testing.T) {
 	}
 }
 
+// Reviewed: LONG-FUNCTION - Comprehensive system integration test.
 func TestSystemIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")

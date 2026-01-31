@@ -8,17 +8,18 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Les-El/hashi/internal/color"
-	"github.com/Les-El/hashi/internal/config"
-	"github.com/Les-El/hashi/internal/console"
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/color"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/console"
+	"github.com/Les-El/chexum/internal/hash"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 // RunDiagnostics executes the diagnostics mode checks.
 func RunDiagnostics(cfg *config.Config, streams *console.Streams) int {
 	c := color.NewColorHandler()
 
-	fmt.Fprintf(streams.Out, "%s\n", "Running Hashi System Diagnostics...")
+	fmt.Fprintf(streams.Out, "%s\n", "Running Chexum System Diagnostics...")
 	fmt.Fprintf(streams.Out, "--------------------------------------------------\n")
 
 	// 1. Environment
@@ -70,7 +71,7 @@ func checkAlgorithm(algo string, c *color.Handler, streams *console.Streams) boo
 		return false
 	}
 	// Basic computation check
-	hashStr, err := computer.ComputeReader(strings.NewReader("hashi"))
+	hashStr, err := computer.ComputeReader(strings.NewReader("chexum"))
 	if err != nil {
 		fmt.Fprintf(streams.Out, "  Computation failed: %v\n", err)
 		return false
@@ -87,8 +88,11 @@ func inspectFile(path string, c *color.Handler, streams *console.Streams) {
 		abs = "unknown"
 	}
 
-	fmt.Fprintf(streams.Out, "  Checking '%s':\n", path)
-	fmt.Fprintf(streams.Out, "    - Absolute path: %s\n", abs)
+	sanitizedPath := security.SanitizeOutput(path)
+	sanitizedAbs := security.SanitizeOutput(abs)
+
+	fmt.Fprintf(streams.Out, "  Checking '%s':\n", sanitizedPath)
+	fmt.Fprintf(streams.Out, "    - Absolute path: %s\n", sanitizedAbs)
 
 	info, err := os.Stat(path)
 	if err != nil {
@@ -97,10 +101,12 @@ func inspectFile(path string, c *color.Handler, streams *console.Streams) {
 		parent := filepath.Dir(abs)
 		pInfo, pErr := os.Stat(parent)
 		if pErr == nil && pInfo.IsDir() {
-			fmt.Fprintf(streams.Out, "    - Parent directory exists: %s (%s)\n", c.Green("YES"), parent)
+			fmt.Fprintf(streams.Out, "    - Parent directory exists: %s (%s)\n",
+				c.Green("YES"), security.SanitizeOutput(parent))
 			// Check write perms on parent?
 		} else {
-			fmt.Fprintf(streams.Out, "    - Parent directory exists: %s (%s)\n", c.Red("NO"), parent)
+			fmt.Fprintf(streams.Out, "    - Parent directory exists: %s (%s)\n",
+				c.Red("NO"), security.SanitizeOutput(parent))
 		}
 	} else {
 		fmt.Fprintf(streams.Out, "    - Exists: %s\n", c.Green("YES"))

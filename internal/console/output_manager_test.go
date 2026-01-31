@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/Les-El/hashi/internal/config"
+	"github.com/Les-El/chexum/internal/config"
 )
 
 func TestOpenOutputFile(t *testing.T) {
@@ -106,7 +106,7 @@ func TestOpenJSONLog(t *testing.T) {
 // TestProperty_AppendModePreservesContent verifies that append mode preserves existing content.
 // Property 12: Append mode preserves existing content
 func TestProperty_AppendModePreservesContent(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "hashi-prop-*")
+	tmpDir, _ := os.MkdirTemp("", "chexum-prop-*")
 	defer os.RemoveAll(tmpDir)
 
 	cfg := config.DefaultConfig()

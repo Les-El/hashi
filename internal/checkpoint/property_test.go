@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 func TestProperty_TestSuiteCreation(t *testing.T) {

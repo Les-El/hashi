@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Les-El/hashi/internal/conflict"
+	"github.com/Les-El/chexum/internal/conflict"
 )
 
 // TestFuzzFlagConflicts generates random flag combinations to ensure no panics.

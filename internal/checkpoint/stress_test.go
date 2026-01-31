@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Les-El/hashi/internal/testutil"
+	"github.com/Les-El/chexum/internal/testutil"
 )
 
 // Property 13: Stress Test Validation

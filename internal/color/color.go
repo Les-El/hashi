@@ -1,4 +1,4 @@
-// Package color provides TTY detection and color handling for hashi.
+// Package color provides TTY detection and color handling for chexum.
 //
 // It automatically detects whether output is going to a terminal and
 // respects the NO_COLOR environment variable. Colors are used to

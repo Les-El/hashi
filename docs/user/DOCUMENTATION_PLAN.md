@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the plan for creating comprehensive user documentation that properly explains hashi's error handling system and other features.
+This document outlines the plan for creating comprehensive user documentation that properly explains chexum's error handling system and other features.
 
 ## Error Handling Documentation Strategy
 
@@ -78,19 +78,19 @@ This generic error protects your system by using the same message for various se
 **Solution:** Use `--verbose` for specific details:
 
 ```bash
-$ hashi --verbose --output problematic.txt file.txt
+$ chexum --verbose --output problematic.txt file.txt
 Error: output file: permission denied writing to problematic.txt
 ```
 
 **Next steps:**
 - Check file permissions: `ls -la /path/to/file`
-- Try a different location: `hashi --output ~/results.txt file.txt`
+- Try a different location: `chexum --output ~/results.txt file.txt`
 - Ensure directory exists: `mkdir -p /path/to/directory`
 ```
 
 ## Implementation Checklist
 
-### Phase 1: Core Error Documentation ✅
+### Phase 1: Core Error Documentation
 - [x] Create `docs/user/error-handling.md`
 - [x] Document the three error categories
 - [x] Provide troubleshooting guidance

@@ -3,7 +3,7 @@
 // DESIGN PRINCIPLE: Atomic Safety
 // ------------------------------
 // When writing to files, there is a risk of data corruption if the process
-// is interrupted (e.g., Ctrl-C, power loss). Hashi avoids this through
+// is interrupted (e.g., Ctrl-C, power loss). Chexum avoids this through
 // "Atomic Writes".
 //
 // We never write directly to the target file. Instead, we write to a hidden
@@ -20,7 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Les-El/hashi/internal/config"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/security"
 )
 
 // OutputManager handles safe file operations for output and logging.
@@ -48,23 +49,25 @@ func (m *OutputManager) OpenOutputFile(path string, appendMode bool, force bool)
 		return nil, nil
 	}
 
+	sanitizedPath := security.SanitizeOutput(path)
+
 	// 1. Check if file exists for overwrite protection
 	if _, err := os.Stat(path); err == nil {
 		if !appendMode && !force {
 			// Prompt for confirmation if interactive
 			if m.isInteractive() {
-				if !m.prompt(fmt.Sprintf("File %s exists. Overwrite?", path)) {
+				if !m.prompt(fmt.Sprintf("File %s exists. Overwrite?", sanitizedPath)) {
 					return nil, fmt.Errorf("operation cancelled by user")
 				}
 			} else {
-				return nil, fmt.Errorf("output file %s exists (use --force to overwrite or --append to append)", path)
+				return nil, fmt.Errorf("output file %s exists (use --force to overwrite or --append to append)", sanitizedPath)
 			}
 		}
 	}
 
 	// 2. Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, config.FileSystemError(m.cfg.Verbose, fmt.Sprintf("failed to create directory for %s: %v", path, err))
+		return nil, config.FileSystemError(m.cfg.Verbose, fmt.Sprintf("failed to create directory for %s: %v", sanitizedPath, err))
 	}
 
 	if appendMode {
@@ -139,9 +142,11 @@ func (m *OutputManager) OpenJSONLog(path string) (io.WriteCloser, error) {
 		return nil, nil
 	}
 
+	sanitizedPath := security.SanitizeOutput(path)
+
 	// 1. Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, config.FileSystemError(m.cfg.Verbose, fmt.Sprintf("failed to create directory for %s: %v", path, err))
+		return nil, config.FileSystemError(m.cfg.Verbose, fmt.Sprintf("failed to create directory for %s: %v", sanitizedPath, err))
 	}
 
 	// 2. Open file for read/write

@@ -13,7 +13,7 @@ func TestProperty25_ConflictResolution(t *testing.T) {
 	cmd := exec.Command("go", "run", ".", "--quiet", "--verbose", "main.go")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("hashi failed: %v, output: %s", err, string(out))
+		t.Fatalf("chexum failed: %v, output: %s", err, string(out))
 	}
 
 	// Warning should be in the output

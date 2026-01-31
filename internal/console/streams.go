@@ -1,4 +1,4 @@
-// Package console handles the "Global Split Streams" architecture for hashi.
+// Package console handles the "Global Split Streams" architecture for chexum.
 //
 // It enforces the strict separation of Data (stdout) and Context (stderr),
 // and implements the "Tee" model for simultaneous file output.
@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/Les-El/hashi/internal/config"
+	"github.com/Les-El/chexum/internal/config"
 )
 
 // Streams holds the configured output streams.

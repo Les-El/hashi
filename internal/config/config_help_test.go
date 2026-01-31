@@ -23,7 +23,7 @@ func TestVersionText(t *testing.T) {
 	if len(version) == 0 {
 		t.Error("VersionText() returned empty string")
 	}
-	if !strings.Contains(version, "hashi") {
-		t.Error("VersionText() should contain 'hashi'")
+	if !strings.Contains(version, "chexum") {
+		t.Error("VersionText() should contain 'chexum'")
 	}
 }

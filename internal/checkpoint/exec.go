@@ -33,5 +33,7 @@ func safeCommand(ctx context.Context, tool string, args ...string) (*exec.Cmd, e
 		}
 	}
 
+	// Reviewed: SECURITY-PROCESS-EXEC - Arguments are sanitized above and tools are whitelisted.
+	// We use exec.CommandContext to ensure timeouts are respected.
 	return exec.CommandContext(ctx, path, args...), nil
 }

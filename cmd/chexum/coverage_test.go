@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Les-El/hashi/internal/color"
-	"github.com/Les-El/hashi/internal/config"
-	"github.com/Les-El/hashi/internal/console"
-	"github.com/Les-El/hashi/internal/errors"
-	"github.com/Les-El/hashi/internal/hash"
+	"github.com/Les-El/chexum/internal/color"
+	"github.com/Les-El/chexum/internal/config"
+	"github.com/Les-El/chexum/internal/console"
+	"github.com/Les-El/chexum/internal/errors"
+	"github.com/Les-El/chexum/internal/hash"
 )
 
 func TestRun_Basic(t *testing.T) {
@@ -21,9 +21,9 @@ func TestRun_Basic(t *testing.T) {
 		args     []string
 		expected int
 	}{
-		{"Help", []string{"hashi", "--help"}, config.ExitSuccess},
-		{"Version", []string{"hashi", "--version"}, config.ExitSuccess},
-		{"InvalidFlag", []string{"hashi", "--no-such-flag"}, config.ExitInvalidArgs},
+		{"Help", []string{"chexum", "--help"}, config.ExitSuccess},
+		{"Version", []string{"chexum", "--version"}, config.ExitSuccess},
+		{"InvalidFlag", []string{"chexum", "--no-such-flag"}, config.ExitInvalidArgs},
 	}
 
 	for _, tt := range tests {
@@ -51,7 +51,7 @@ func TestPrepareFiles_Coverage(t *testing.T) {
 	})
 
 	t.Run("WithFiles", func(t *testing.T) {
-		tmpFile, _ := os.CreateTemp("", "hashi_test_prepare_*.txt")
+		tmpFile, _ := os.CreateTemp("", "chexum_test_prepare_*.txt")
 		defer os.Remove(tmpFile.Name())
 		tmpFile.Close()
 

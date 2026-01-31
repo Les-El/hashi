@@ -1,6 +1,6 @@
 # Command Reference
 
-This document provides a complete reference for all command-line flags available in `hashi`.
+This document provides a complete reference for all command-line flags available in `chexum`.
 
 ## Core Flags
 
@@ -8,7 +8,7 @@ This document provides a complete reference for all command-line flags available
 Recursively traverse directories.
 - **Default**: false
 
-### `--hidden`
+### `--hidden`, `-H`
 Include hidden files and directories in the analysis.
 - **Default**: false
 
@@ -16,14 +16,31 @@ Include hidden files and directories in the analysis.
 Specify the hashing algorithm to use (`sha256`, `sha1`, `md5`, `sha512`, `blake2b`).
 - **Default**: `sha256`
 
+### `--dry-run`
+Preview the files that would be processed without actually computing any hashes. Useful for verifying include/exclude patterns and estimating workload.
+- **Behavior**: Discovers files, applies filters, and displays a summary including total file count, aggregate size, and estimated hashing time.
+- **Default**: false
+
+### `--jobs`, `-j`
+Number of parallel processing jobs to use.
+- **0 (Auto)**: Calculate based on the **Neighborhood Policy** (default).
+- **Positive Integer**: Use exactly that many workers.
+- **Neighborhood Policy**: chexum aims to use most available cores while leaving headroom for system responsiveness (e.g., N-1 cores on quad-core systems, N-2 on larger systems, capped at 32).
+- **Environment Variable**: `CHEXUM_JOBS`
+
 ### `--config`, `-c`
 Path to a configuration file.
+
+### `--test`
+Run system diagnostics and performance checks to troubleshoot environment issues or verify hardware capabilities.
+- **Checks**: OS/Architecture info, CPU count, Go version, algorithm sanity check, and detailed inspection of provided file or hash arguments.
+- **Default**: false
 
 ### `--help`, `-h`
 Show help text and exit.
 
 ### `--version`, `-V`
-Display the version of `hashi` and exit.
+Display the version of `chexum` and exit.
 
 ## Filtering Flags
 
@@ -59,7 +76,7 @@ Output only a boolean result (`true` or `false`) indicating success or failure.
 - **Default**: false
 
 ### `--format`, `-f`
-Specify the output format (`default`, `verbose`, `json`, `jsonl`, `plain`).
+Specify the output format (`default`, `verbose`, `json`, `jsonl`, `plain`, `csv`).
 - **Default**: `default`
 
 ### `--json`
@@ -70,6 +87,9 @@ Shortcut for `--format jsonl`.
 
 ### `--plain`
 Shortcut for `--format plain`.
+
+### `--csv`
+Shortcut for `--format csv`.
 
 ### `--output`, `-o`
 Write output results to the specified file.
@@ -92,8 +112,16 @@ File for JSON formatted logging.
 Ensure that file discovery and processing maintain alphabetical order.
 - **Default**: false
 
-### `--match-required`
-Exit 0 only if matches were found.
+### `--any-match`
+Exit 0 if at least one match is found. Replaces the deprecated `--match-required`.
+- **Default**: false
+
+### `--all-match`
+Exit 0 only if ALL provided files match a hash in the provided pool or are identical.
+- **Default**: false
+
+### `--keep-tmp`
+Keep temporary files and workspaces after execution (useful for debugging).
 
 ### `--manifest`
 Baseline manifest for incremental operations.

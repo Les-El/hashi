@@ -31,8 +31,6 @@ func (f *FlagSystem) Name() string { return "FlagSystem" }
 
 // Analyze performs a comprehensive analysis of the flag system and returns identified issues.
 func (f *FlagSystem) Analyze(ctx context.Context, path string, ws *Workspace) ([]Issue, error) {
-	var issues []Issue
-
 	configPkg, _ := discoverPackageByName(path, "config")
 
 	flags, err := f.CatalogFlags(ctx, path, ws)
@@ -45,56 +43,76 @@ func (f *FlagSystem) Analyze(ctx context.Context, path string, ws *Workspace) ([
 	flags, _ = f.DetectConflicts(ctx, ws, flags)
 	flags, _ = f.ValidateFunctionality(ctx, ws, flags)
 
+	return f.reportFlagIssues(path, configPkg, flags), nil
+}
+
+func (f *FlagSystem) reportFlagIssues(path, configPkg string, flags []FlagStatus) []Issue {
+	var issues []Issue
 	for _, flag := range flags {
-		if flag.Status == PartiallyImplemented {
-			issues = append(issues, Issue{
-				ID:          "FLAG-PARTIAL-IMPLEMENTATION",
-				Category:    Usability,
-				Severity:    Medium,
-				Title:       fmt.Sprintf("Flag '--%s' is partially implemented", flag.LongForm),
-				Description: fmt.Sprintf("The flag '--%s' is defined but not fully integrated into the configuration system.", flag.LongForm),
-				Location:    filepath.Join(path, configPkg, "cli.go"),
-				Suggestion:  fmt.Sprintf("Complete the implementation of '--%s' in %s/cli.go.", flag.LongForm, configPkg),
-				Effort:      MediumEffort,
-				Priority:    P2,
-			})
-		}
+		issues = append(issues, f.reportImplementationIssues(path, configPkg, flag)...)
+		issues = append(issues, f.reportConflictIssues(path, configPkg, flag)...)
+	}
+	return issues
+}
 
-		if flag.ActualBehavior == "Not found in --help" {
-			issues = append(issues, Issue{
-				ID:          "FLAG-MISSING-FROM-HELP-OUTPUT",
-				Category:    Usability,
-				Severity:    High,
-				Title:       fmt.Sprintf("Flag '--%s' missing from CLI help output", flag.LongForm),
-				Description: fmt.Sprintf("The flag '--%s' is defined in code but does not appear when running 'chexum --help'.", flag.LongForm),
-				Location:    filepath.Join(path, configPkg, "cli.go"),
-				Suggestion:  "Ensure the flag is correctly added to the flagset used by the CLI.",
-				Effort:      Small,
-				Priority:    P1,
-			})
-		}
+func (f *FlagSystem) reportImplementationIssues(path, configPkg string, flag FlagStatus) []Issue {
+	var issues []Issue
+	location := filepath.Join(path, configPkg, "cli.go")
 
-		for _, conflict := range flag.ConflictDetails {
-			severity := Medium
-			if conflict.Severity == ConflictCritical || conflict.Severity == ConflictHigh {
-				severity = High
-			}
-
-			issues = append(issues, Issue{
-				ID:          fmt.Sprintf("FLAG-CONFLICT-%s", strings.ToUpper(string(conflict.Type))),
-				Category:    Usability,
-				Severity:    severity,
-				Title:       fmt.Sprintf("Conflict detected for flag '--%s'", flag.LongForm),
-				Description: conflict.Description,
-				Location:    filepath.Join(path, configPkg, "cli.go"),
-				Suggestion:  "Resolve the discrepancy between the flag sources.",
-				Effort:      Small,
-				Priority:    P1,
-			})
-		}
+	if flag.Status == PartiallyImplemented {
+		issues = append(issues, Issue{
+			ID:          "FLAG-PARTIAL-IMPLEMENTATION",
+			Category:    Usability,
+			Severity:    Medium,
+			Title:       fmt.Sprintf("Flag '--%s' is partially implemented", flag.LongForm),
+			Description: fmt.Sprintf("The flag '--%s' is defined but not fully integrated into the configuration system.", flag.LongForm),
+			Location:    location,
+			Suggestion:  fmt.Sprintf("Complete the implementation of '--%s' in %s/cli.go.", flag.LongForm, configPkg),
+			Effort:      MediumEffort,
+			Priority:    P2,
+		})
 	}
 
-	return issues, nil
+	if flag.ActualBehavior == "Not found in --help" {
+		issues = append(issues, Issue{
+			ID:          "FLAG-MISSING-FROM-HELP-OUTPUT",
+			Category:    Usability,
+			Severity:    High,
+			Title:       fmt.Sprintf("Flag '--%s' missing from CLI help output", flag.LongForm),
+			Description: fmt.Sprintf("The flag '--%s' is defined in code but does not appear when running 'chexum --help'.", flag.LongForm),
+			Location:    location,
+			Suggestion:  "Ensure the flag is correctly added to the flagset used by the CLI.",
+			Effort:      Small,
+			Priority:    P1,
+		})
+	}
+
+	return issues
+}
+
+func (f *FlagSystem) reportConflictIssues(path, configPkg string, flag FlagStatus) []Issue {
+	var issues []Issue
+	location := filepath.Join(path, configPkg, "cli.go")
+
+	for _, conflict := range flag.ConflictDetails {
+		severity := Medium
+		if conflict.Severity == ConflictCritical || conflict.Severity == ConflictHigh {
+			severity = High
+		}
+
+		issues = append(issues, Issue{
+			ID:          fmt.Sprintf("FLAG-CONFLICT-%s", strings.ToUpper(string(conflict.Type))),
+			Category:    Usability,
+			Severity:    severity,
+			Title:       fmt.Sprintf("Conflict detected for flag '--%s'", flag.LongForm),
+			Description: conflict.Description,
+			Location:    location,
+			Suggestion:  "Resolve the discrepancy between the flag sources.",
+			Effort:      Small,
+			Priority:    P1,
+		})
+	}
+	return issues
 }
 
 // CatalogFlags parses the codebase to discover CLI flag definitions.
@@ -182,15 +200,27 @@ func (f *FlagSystem) parseFlagCall(call *ast.CallExpr) (FlagStatus, bool) {
 
 // ClassifyImplementation analyzes the implementation status of each flag by tracing variable usage.
 func (f *FlagSystem) ClassifyImplementation(ctx context.Context, rootPath string, ws *Workspace, flags []FlagStatus) ([]FlagStatus, error) {
-	// Read config files to see if flags are used
-	configPkg, err := discoverPackageByName(rootPath, "config")
+	code, mainCode, err := f.loadCodebases(rootPath)
 	if err != nil {
 		return nil, err
 	}
 
+	for i := range flags {
+		f.updateFlagImplementationStatus(&flags[i], code, mainCode)
+	}
+
+	return flags, nil
+}
+
+func (f *FlagSystem) loadCodebases(rootPath string) (string, string, error) {
+	configPkg, err := discoverPackageByName(rootPath, "config")
+	if err != nil {
+		return "", "", err
+	}
+
 	files, err := discoverPackageFiles(rootPath, configPkg)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
 	var sb strings.Builder
@@ -200,61 +230,111 @@ func (f *FlagSystem) ClassifyImplementation(ctx context.Context, rootPath string
 			sb.Write(content)
 		}
 	}
-	code := sb.String()
 
-	// Also check cmd/chexum/main.go for usage of the Config struct
 	mainPath := filepath.Join(rootPath, "cmd/chexum/main.go")
 	mainContent, _ := os.ReadFile(mainPath)
-	mainCode := string(mainContent)
 
-	for i := range flags {
-		flag := &flags[i]
-
-		// Static analysis: check for usage of flag in config parsing or in main
-		// We look for .Name, .JSON, .Recursive etc. usage on a config object.
-		// This is still a heuristic but better than just checking flagSet.Changed().
-
-		// Map flag names to field names (simplified heuristic)
-		fieldName := strings.ReplaceAll(strings.Title(strings.ReplaceAll(flag.LongForm, "-", " ")), " ", "")
-		// Special cases
-		if flag.LongForm == "json" {
-			fieldName = "JSON"
-		}
-		if flag.LongForm == "jsonl" {
-			fieldName = "JSONL"
-		}
-
-		isUsedInConfig := strings.Contains(code, "cfg."+fieldName) || strings.Contains(code, "flagSet.Changed(\""+flag.LongForm+"\")")
-		isUsedInMain := strings.Contains(mainCode, "cfg."+fieldName)
-
-		if isUsedInConfig && isUsedInMain {
-			flag.Status = FullyImplemented
-		} else if isUsedInConfig || isUsedInMain {
-			flag.Status = PartiallyImplemented
-		} else {
-			flag.Status = PlannedNotImplemented
-		}
-
-		// Check for documentation in HelpText (usually in help.go now)
-		if strings.Contains(code, "--"+flag.LongForm) {
-			flag.Documentation = true
-			flag.DefinedInHelp = true
-		}
-	}
-
-	return flags, nil
+	return sb.String(), string(mainContent), nil
 }
 
-func (f *FlagSystem) detectGhostFlags(docContent, planContent string, flags []FlagStatus, ws *Workspace) {
-	// Extract potential flags from docs using regex
-	// This is a simplified implementation
-	// In a real system, we'd look for --[a-z-]+
+func (f *FlagSystem) updateFlagImplementationStatus(flag *FlagStatus, configCode, mainCode string) {
+	fieldName := f.mapFlagToFieldName(flag.LongForm)
+
+	// Accuracy: Use AST parsing for precise usage detection instead of strings.Contains
+	isUsedInConfig := f.isFieldUsedInAST(configCode, fieldName) ||
+		strings.Contains(configCode, "flagSet.Changed(\""+flag.LongForm+"\")")
+	isUsedInMain := f.isFieldUsedInAST(mainCode, fieldName)
+
+	if isUsedInConfig && isUsedInMain {
+		flag.Status = FullyImplemented
+	} else if isUsedInConfig || isUsedInMain {
+		flag.Status = PartiallyImplemented
+	} else {
+		flag.Status = PlannedNotImplemented
+	}
+
+	// Check for documentation in HelpText
+	if strings.Contains(configCode, "--"+flag.LongForm) {
+		flag.Documentation = true
+		flag.DefinedInHelp = true
+	}
+}
+
+// isFieldUsedInAST parses the code and looks for cfg.FieldName exactly.
+func (f *FlagSystem) isFieldUsedInAST(code, fieldName string) bool {
+	if code == "" {
+		return false
+	}
+	node, err := parser.ParseFile(f.fset, "", code, 0)
+	if err != nil {
+		return false
+	}
+
+	found := false
+	ast.Inspect(node, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+
+		// Look for cfg.FieldName
+		if id, ok := sel.X.(*ast.Ident); ok && (id.Name == "cfg" || id.Name == "c") {
+			if sel.Sel.Name == fieldName {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+
+	return found
+}
+
+func (f *FlagSystem) mapFlagToFieldName(longForm string) string {
+	// Special cases
+	switch longForm {
+	case "json":
+		return "JSON"
+	case "jsonl":
+		return "JSONL"
+	case "help":
+		return "ShowHelp"
+	case "version":
+		return "ShowVersion"
+	case "config":
+		return "ConfigFile"
+	case "log-json":
+		return "LogJSON"
+	case "format":
+		return "OutputFormat"
+	case "csv":
+		return "CSV"
+	}
+
+	// Default heuristic
+	return strings.ReplaceAll(strings.Title(strings.ReplaceAll(longForm, "-", " ")), " ", "")
 }
 
 // PerformCrossReferenceAnalysis compares flag definitions across multiple sources.
 func (f *FlagSystem) PerformCrossReferenceAnalysis(ctx context.Context, rootPath string, ws *Workspace, flags []FlagStatus) ([]FlagStatus, error) {
-	// 1. Check user documentation
-	userDocs := []string{
+	docContent := f.readFilesCombined(f.getUserDocs(rootPath))
+	planContent := f.readFilesCombined(f.getPlanningDocs(rootPath))
+
+	for i := range flags {
+		flag := &flags[i]
+		if strings.Contains(docContent, "--"+flag.LongForm) {
+			flag.DefinedInDocs = true
+		}
+		if strings.Contains(planContent, "--"+flag.LongForm) || strings.Contains(planContent, flag.LongForm) {
+			flag.DefinedInPlanning = true
+		}
+	}
+
+	return f.identifyGhostFlags(flags, planContent), nil
+}
+
+func (f *FlagSystem) getUserDocs(rootPath string) []string {
+	return []string{
 		filepath.Join(rootPath, "README.md"),
 		filepath.Join(rootPath, "docs/user/dry-run.md"),
 		filepath.Join(rootPath, "docs/user/examples.md"),
@@ -262,9 +342,10 @@ func (f *FlagSystem) PerformCrossReferenceAnalysis(ctx context.Context, rootPath
 		filepath.Join(rootPath, "docs/user/incremental.md"),
 		filepath.Join(rootPath, "docs/user/command-reference.md"),
 	}
+}
 
-	// 2. Check planning documents
-	planDocs := []string{
+func (f *FlagSystem) getPlanningDocs(rootPath string) []string {
+	return []string{
 		filepath.Join(rootPath, "docs/checkpoint/checkpoint_design.md"),
 		filepath.Join(rootPath, "docs/checkpoint/chekpoint_requirements.md"),
 		filepath.Join(rootPath, "docs/remediation/audit_remediation_plan.md"),
@@ -272,28 +353,14 @@ func (f *FlagSystem) PerformCrossReferenceAnalysis(ctx context.Context, rootPath
 		filepath.Join(rootPath, "docs/dev/flag_conflicts.md"),
 		filepath.Join(rootPath, "docs/design/new_conflict_resolution.md"),
 	}
+}
 
-	docContent := f.readFilesCombined(userDocs)
-	planContent := f.readFilesCombined(planDocs)
-
-	for i := range flags {
-		flag := &flags[i]
-		if strings.Contains(docContent, "--"+flag.LongForm) {
-			flag.DefinedInDocs = true
-		}
-		// Match flag name or field name in planning docs
-		if strings.Contains(planContent, "--"+flag.LongForm) || strings.Contains(planContent, flag.LongForm) {
-			flag.DefinedInPlanning = true
-		}
-	}
-
-	// Identify Ghost Flags (planned but not in code)
-	// We scan the planning content for --[a-z-]+ and add them if not already present
+func (f *FlagSystem) identifyGhostFlags(flags []FlagStatus, planContent string) []FlagStatus {
 	ghostFlags := f.extractPotentialFlags(planContent)
 	for _, ghost := range ghostFlags {
 		found := false
-		for _, f := range flags {
-			if f.LongForm == ghost {
+		for _, flag := range flags {
+			if flag.LongForm == ghost {
 				found = true
 				break
 			}
@@ -307,8 +374,7 @@ func (f *FlagSystem) PerformCrossReferenceAnalysis(ctx context.Context, rootPath
 			})
 		}
 	}
-
-	return flags, nil
+	return flags
 }
 
 func (f *FlagSystem) extractPotentialFlags(content string) []string {

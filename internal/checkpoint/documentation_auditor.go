@@ -227,54 +227,52 @@ func (d *DocAuditor) CheckArchitecturalDocs(ctx context.Context, rootPath string
 
 // VerifyExamples checks that example files exist and are valid.
 func (d *DocAuditor) VerifyExamples(ctx context.Context, rootPath string, ws *Workspace) ([]Issue, error) {
-	var issues []Issue
-
 	exampleDir := filepath.Join(rootPath, "examples")
 	if _, err := os.Stat(exampleDir); os.IsNotExist(err) {
 		return nil, nil // No examples to verify
 	}
 
+	var issues []Issue
 	err := filepath.Walk(exampleDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return err
 		}
-		if info.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") {
-			return nil
-		}
 
-		// Cross-platform compilation check
-		platforms := []struct{ OS, Arch string }{
-			{"linux", "amd64"},
-			{"windows", "amd64"},
-			{"darwin", "amd64"},
-		}
-
-		for _, p := range platforms {
-			cmd, err := safeCommand(ctx, "go", "build", "-o", os.DevNull, path)
-			if err != nil {
-				continue
-			}
-			cmd.Env = append(os.Environ(), "GOOS="+p.OS, "GOARCH="+p.Arch)
-			if output, err := cmd.CombinedOutput(); err != nil {
-				issues = append(issues, Issue{
-					ID:          fmt.Sprintf("BROKEN-EXAMPLE-%s", strings.ToUpper(p.OS)),
-					Category:    Documentation,
-					Severity:    High,
-					Title:       fmt.Sprintf("Example file fails to compile for %s", p.OS),
-					Description: fmt.Sprintf("Example file '%s' failed compilation for %s/%s:\n%s", path, p.OS, p.Arch, string(output)),
-					Location:    path,
-					Suggestion:  fmt.Sprintf("Fix the platform-specific compilation errors for %s.", p.OS),
-					Effort:      Small,
-					Priority:    P1,
-				})
-			}
-		}
-
+		platformIssues := d.checkExampleCompilation(ctx, path)
+		issues = append(issues, platformIssues...)
 		return nil
 	})
 
 	return issues, err
+}
+
+func (d *DocAuditor) checkExampleCompilation(ctx context.Context, path string) []Issue {
+	var issues []Issue
+	platforms := []struct{ OS, Arch string }{
+		{"linux", "amd64"},
+		{"windows", "amd64"},
+		{"darwin", "amd64"},
+	}
+
+	for _, p := range platforms {
+		cmd, err := safeCommand(ctx, "go", "build", "-o", os.DevNull, path)
+		if err != nil {
+			continue
+		}
+		cmd.Env = append(os.Environ(), "GOOS="+p.OS, "GOARCH="+p.Arch)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			issues = append(issues, Issue{
+				ID:          fmt.Sprintf("BROKEN-EXAMPLE-%s", strings.ToUpper(p.OS)),
+				Category:    Documentation,
+				Severity:    High,
+				Title:       fmt.Sprintf("Example file fails to compile for %s", p.OS),
+				Description: fmt.Sprintf("Example file '%s' failed compilation for %s/%s:\n%s", path, p.OS, p.Arch, string(output)),
+				Location:    path,
+				Suggestion:  fmt.Sprintf("Fix the platform-specific compilation errors for %s.", p.OS),
+				Effort:      Small,
+				Priority:    P1,
+			})
+		}
+	}
+	return issues
 }
